@@ -119,6 +119,27 @@
   .scanner-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .shop-app-note{font-size:12px;color:#6d7480;line-height:1.5;margin-top:8px}
 
+
+  .feature-card{background:#fff;border-radius:18px;padding:18px;margin-top:14px;box-shadow:0 8px 22px rgba(0,0,0,.09)}
+  .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .validation-box{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#fff4e5;border:1px solid #ffd8a8;font-size:13px;line-height:1.55;font-weight:800}
+  .memo-box{background:#f8fafc;border:1px solid #e6eaf0;border-radius:14px;padding:12px;margin-top:10px}
+  .memo-title{font-size:14px;font-weight:900;margin-bottom:6px}
+  .memo-text{font-size:13px;line-height:1.6;color:#4e5865;white-space:pre-wrap}
+  .top10-item{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #eceff2}
+  .top10-rank{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#17365D;color:#fff;font-weight:900;font-size:13px}
+  .top10-profit{font-weight:900;color:#0b6b2c;text-align:right}
+  .store-history-item{padding:10px;border:1px solid #e5e8eb;border-radius:12px;margin-bottom:8px;background:#fafbfc}
+  .store-history-name{font-size:14px;font-weight:900}
+  .store-history-meta{font-size:12px;color:#68717d;line-height:1.5;margin-top:4px}
+  .quick-number-row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}
+  .quick-number-row button{padding:10px 5px;font-size:12px}
+  .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .report-box{background:#f3f6f9;border-radius:14px;padding:13px;text-align:center}
+  .report-label{font-size:11px;color:#68717d;font-weight:800}
+  .report-value{font-size:20px;font-weight:900;margin-top:5px}
+  .resourcing-alert{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#e7f5ff;border:1px solid #a5d8ff;color:#0b4f6c;font-size:13px;line-height:1.55;font-weight:800}
+
   @media(max-width:390px){ .grid2{grid-template-columns:1fr;} .profit{font-size:34px;} .top-summary{grid-template-columns:1fr;} }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -195,6 +216,33 @@
     <div id="duplicateAlert" class="duplicate-alert"></div>
   </section>
 
+  <section class="feature-card">
+    <h2 class="title">영수증·매대 가격표 인식</h2>
+    <div class="feature-grid">
+      <button class="secondary" onclick="document.getElementById('receiptPhoto').click()">영수증 촬영</button>
+      <button class="secondary" onclick="document.getElementById('priceTagPhoto').click()">가격표 촬영</button>
+      <input id="receiptPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeReceipt(event)">
+      <input id="priceTagPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizePriceTag(event)">
+    </div>
+    <div id="documentStatus" class="ai-status">영수증은 상품명·수량·결제금액을, 가격표는 상품명·매대가격을 인식합니다.</div>
+    <div id="documentResult" class="memo-box" style="display:none">
+      <div class="memo-title">인식 결과</div>
+      <div id="documentResultText" class="memo-text"></div>
+    </div>
+  </section>
+
+  <section class="feature-card">
+    <h2 class="title">자동 소싱 메모</h2>
+    <div class="field">
+      <label for="sourcingMemo">메모</label>
+      <textarea id="sourcingMemo" rows="5" style="width:100%;border:1.5px solid #d8dde3;border-radius:14px;padding:12px;font-size:15px;resize:vertical" placeholder="사진·매장·가격·구성·판정 정보를 자동으로 정리합니다."></textarea>
+    </div>
+    <div class="feature-grid">
+      <button class="secondary" onclick="generateSourcingMemo()">메모 자동작성</button>
+      <button class="primary" onclick="saveMemoOnly()">메모 저장</button>
+    </div>
+  </section>
+
   <section class="card">
     <h2 class="title">최근 검색·즐겨찾기</h2>
     <div class="tab-row">
@@ -209,8 +257,8 @@
     <h2 class="title">필수 입력</h2>
 
     <div class="field">
-      <label for="bundle">묶음 수량</label>
-      <select id="bundle" onchange="calc()">
+      <label for="bundle">내 판매 구성 수량</label>
+      <select id="bundle" onchange="calc();validateComposition()">
         <option value="1">1개 판매</option>
         <option value="2">2개 묶음 판매</option>
         <option value="3">3개 묶음 판매</option>
@@ -221,19 +269,63 @@
     </div>
 
     <div class="field">
+      <label for="marketBundle">쿠팡 검색상품 구성 수량</label>
+      <select id="marketBundle" onchange="validateComposition()">
+        <option value="0">확인 전</option>
+        <option value="1">1개</option>
+        <option value="2">2개 묶음</option>
+        <option value="3">3개 묶음</option>
+        <option value="4">4개 묶음</option>
+        <option value="5">5개 묶음</option>
+        <option value="6">6개 묶음</option>
+        <option value="12">12개입</option>
+        <option value="24">24개입</option>
+        <option value="36">36개입</option>
+        <option value="48">48개입</option>
+      </select>
+      <div id="compositionValidation" class="validation-box"></div>
+    </div>
+
+    <div class="field">
+      <label for="storeName">소싱 매장</label>
+      <select id="storeName">
+        <option value="이마트">이마트</option>
+        <option value="홈플러스">홈플러스</option>
+        <option value="트레이더스">트레이더스</option>
+        <option value="코스트코">코스트코</option>
+        <option value="다이소">다이소</option>
+        <option value="온라인몰">온라인몰</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+
+    <div class="field">
       <label for="sale">쿠팡 판매가</label>
       <div class="inputbox">
         <input id="sale" type="number" inputmode="numeric" value="35900" oninput="calc()">
         <span class="unit">원</span>
+      </div>
+      <div class="quick-number-row">
+        <button class="secondary" onclick="adjustNumber('sale',-1000)">-1천</button>
+        <button class="secondary" onclick="adjustNumber('sale',-100)">-100</button>
+        <button class="secondary" onclick="adjustNumber('sale',100)">+100</button>
+        <button class="secondary" onclick="adjustNumber('sale',1000)">+1천</button>
       </div>
     </div>
 
     <div class="field">
       <label for="unitCost">상품 1개당 소싱단가</label>
       <div class="inputbox">
-        <input id="unitCost" type="number" inputmode="numeric" value="18500" oninput="calc()">
+        <input id="unitCost" type="number" inputmode="numeric" value="18500" oninput="calc();checkResourcingAlert()">
         <span class="unit">원</span>
       </div>
+      <div class="quick-number-row">
+        <button class="secondary" onclick="adjustNumber('unitCost',-1000)">-1천</button>
+        <button class="secondary" onclick="adjustNumber('unitCost',-100)">-100</button>
+        <button class="secondary" onclick="adjustNumber('unitCost',100)">+100</button>
+        <button class="secondary" onclick="adjustNumber('unitCost',1000)">+1천</button>
+      </div>
+      <div id="resourcingAlert" class="resourcing-alert"></div>
     </div>
 
     <div class="field">
@@ -335,6 +427,8 @@
     <div class="section-actions">
       <button class="primary" onclick="saveSourcingRecord()">소싱기록 저장</button>
       <button class="secondary" onclick="addCurrentToCart()">오늘 장바구니 담기</button>
+      <button class="danger" onclick="quickFailCurrent()">구매 제외 기록</button>
+      <button class="secondary" onclick="generateSourcingMemo()">메모 자동작성</button>
     </div>
     <div class="market-grid">
       <button class="market-btn" onclick="openMarket('coupang')">쿠팡</button>
@@ -420,6 +514,48 @@
   </main>
 
   <main id="pageMore" class="page">
+    <section class="card">
+      <h2 class="title">오늘의 TOP 10</h2>
+      <div class="tab-row">
+        <button id="topProfitTab" class="tab-btn active" onclick="renderTop10('profit')">순이익순</button>
+        <button id="topMarginTab" class="tab-btn secondary" onclick="renderTop10('margin')">마진율순</button>
+      </div>
+      <div id="top10List"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">실패 상품 기록</h2>
+      <div class="grid2">
+        <div class="field"><label>상품명</label><input id="failName" type="text" placeholder="상품명"></div>
+        <div class="field"><label>제외 이유</label>
+          <select id="failReason">
+            <option>마진 부족</option>
+            <option>구성 불일치</option>
+            <option>가격 변동 위험</option>
+            <option>부피 큼</option>
+            <option>재고 부담</option>
+            <option>경쟁 심함</option>
+            <option>기타</option>
+          </select>
+        </div>
+      </div>
+      <button class="primary" style="width:100%" onclick="saveFailedProduct()">실패 상품 저장</button>
+      <div id="failedProductList" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">월간 소싱 리포트</h2>
+      <div class="report-grid">
+        <div class="report-box"><div class="report-label">검색 상품</div><div id="reportSearchCount" class="report-value">0개</div></div>
+        <div class="report-box"><div class="report-label">구매 상품</div><div id="reportBuyCount" class="report-value">0개</div></div>
+        <div class="report-box"><div class="report-label">총 매입액</div><div id="reportCost" class="report-value">0원</div></div>
+        <div class="report-box"><div class="report-label">예상 순이익</div><div id="reportProfit" class="report-value">0원</div></div>
+        <div class="report-box"><div class="report-label">실패 상품</div><div id="reportFailCount" class="report-value">0개</div></div>
+        <div class="report-box"><div class="report-label">최고 성과 매장</div><div id="reportBestStore" class="report-value">-</div></div>
+      </div>
+      <button class="secondary" style="width:100%;margin-top:12px" onclick="exportMonthlyReportXLSX()">월간 리포트 엑셀</button>
+    </section>
+
     <section class="card">
       <h2 class="title">오늘의 소싱 현황</h2>
       <div class="dashboard-grid">
@@ -905,7 +1041,7 @@ function showPage(name){
   if(name==='records') renderSourcingRecords();
   if(name==='inventory') renderInventory();
   if(name==='sales') renderSales();
-  if(name==='more') renderDashboard();
+  if(name==='more'){renderDashboard();renderTop10('profit');renderFailedProducts();renderMonthlyReport();}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -917,6 +1053,9 @@ function currentCalcData(){
     id:Date.now(),
     date:new Date().toISOString(),
     name:(document.getElementById('recognizedName').value||'상품명 미입력').trim(),
+    store:document.getElementById('storeName')?document.getElementById('storeName').value:'',
+    marketBundle:Number(document.getElementById('marketBundle')?.value||0),
+    memo:document.getElementById('sourcingMemo')?document.getElementById('sourcingMemo').value.trim():'',
     bundle,sale,unitCost,other,feeRate:n('fee'),taxRate:n('tax'),ship,targetRate:n('target'),
     totalCost:r.totalCost,feeAmt:r.feeAmt,vat:r.vat,incomeTax:r.incomeTax,profit:r.profit,
     margin:sale?100*r.profit/sale:0
@@ -924,11 +1063,14 @@ function currentCalcData(){
 }
 
 function saveSourcingRecord(silent=false){
+  if(document.getElementById('sourcingMemo') && !document.getElementById('sourcingMemo').value.trim())generateSourcingMemo();
   const data=currentCalcData();
   let list=readList('alldaypick_sourcing_records');
   list.unshift(data);
   writeList('alldaypick_sourcing_records',list.slice(0,1000));
-  if(!silent) alert('소싱기록에 저장했습니다.');
+  saveStorePriceHistory(data);
+  checkResourcingAlert();
+  if(!silent) alert('소싱기록과 매장 가격을 저장했습니다.');
   renderDashboard();
 }
 
@@ -945,7 +1087,7 @@ function renderSourcingRecords(){
   if(!list.length){box.innerHTML='<div class="empty">저장된 소싱기록이 없습니다.</div>';return;}
   box.innerHTML=list.map(x=>`<div class="record-card">
     <div class="record-title">${escapeHtml(x.name)}</div>
-    <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${x.bundle}개 구성<br>판매가 ${won(x.sale)} · 개당 소싱가 ${won(x.unitCost)} · 마진율 ${Number(x.margin).toFixed(1)}%</div>
+    <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${x.store||'매장 미지정'} · ${x.bundle}개 구성<br>판매가 ${won(x.sale)} · 개당 소싱가 ${won(x.unitCost)} · 마진율 ${Number(x.margin).toFixed(1)}%</div>
     <div class="record-profit ${x.profit>=0?'':'bad'}">순이익 ${won(x.profit)}</div>
     <div class="small-actions" style="margin-top:8px">
       <button class="primary small-btn" onclick="loadSourcingRecord(${x.id})">불러오기</button>
@@ -1231,6 +1373,281 @@ function exportCartXLSX(){
 }
 
 
+
+function adjustNumber(id,delta){
+  const el=document.getElementById(id);
+  el.value=Math.max(0,(Number(el.value)||0)+delta);
+  calc();
+  if(id==='unitCost')checkResourcingAlert();
+}
+
+function validateComposition(){
+  const mine=Number(document.getElementById('bundle').value||0);
+  const market=Number(document.getElementById('marketBundle').value||0);
+  const box=document.getElementById('compositionValidation');
+  if(!box)return;
+  if(!market){
+    box.style.display='none';
+    box.textContent='';
+    return;
+  }
+  if(mine===market){
+    box.style.display='block';
+    box.style.background='#eaf7ef';
+    box.style.borderColor='#b7e1c2';
+    box.style.color='#176b28';
+    box.textContent='구성 수량이 일치합니다.';
+  }else{
+    box.style.display='block';
+    box.style.background='#fff4e5';
+    box.style.borderColor='#ffd8a8';
+    box.style.color='#8a4b00';
+    box.textContent='구성 불일치: 내 판매 구성 '+mine+'개 / 쿠팡 검색상품 '+market+'개. 가격을 그대로 사용하면 계산이 틀릴 수 있습니다.';
+  }
+}
+
+function getStorePriceHistory(){
+  return readList('alldaypick_store_price_history');
+}
+function saveStorePriceHistory(record){
+  let list=getStorePriceHistory();
+  list.unshift({
+    id:Date.now(),
+    date:new Date().toISOString(),
+    name:record.name,
+    store:document.getElementById('storeName').value,
+    unitCost:record.unitCost,
+    sale:record.sale,
+    profit:record.profit,
+    margin:record.margin
+  });
+  writeList('alldaypick_store_price_history',list.slice(0,3000));
+}
+
+function checkResourcingAlert(){
+  const name=(document.getElementById('recognizedName').value||'').trim();
+  const current=Number(document.getElementById('unitCost').value||0);
+  const box=document.getElementById('resourcingAlert');
+  if(!box||!name||!current){
+    if(box)box.style.display='none';
+    return;
+  }
+  const target=normalizeProductName(name);
+  const history=getStorePriceHistory()
+    .filter(x=>normalizeProductName(x.name)===target && Number(x.unitCost)>0)
+    .sort((a,b)=>Number(a.unitCost)-Number(b.unitCost));
+  if(!history.length){
+    box.style.display='none';
+    return;
+  }
+  const best=history[0];
+  const diff=current-Number(best.unitCost);
+  box.style.display='block';
+  if(diff<0){
+    box.textContent='재소싱 기회: 지난 최저가보다 '+won(Math.abs(diff))+' 저렴합니다. 지난 최저 매장 '+best.store+' · '+won(best.unitCost);
+  }else if(diff===0){
+    box.textContent='지난 최저 소싱가와 같습니다. 매장 '+best.store+' · '+won(best.unitCost);
+  }else{
+    box.textContent='지난 최저가보다 '+won(diff)+' 비쌉니다. 지난 최저 매장 '+best.store+' · '+won(best.unitCost);
+  }
+}
+
+async function uploadDocumentImage(file,endpoint){
+  const form=new FormData();
+  form.append('image',file);
+  const response=await fetch(endpoint,{method:'POST',body:form});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'인식 실패');
+  return data;
+}
+
+async function recognizeReceipt(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  const status=document.getElementById('documentStatus');
+  const box=document.getElementById('documentResult');
+  const text=document.getElementById('documentResultText');
+  status.textContent='영수증을 인식하고 있습니다.';
+  try{
+    const data=await uploadDocumentImage(file,'/api/recognize-receipt');
+    box.style.display='block';
+    const items=Array.isArray(data.items)?data.items:[];
+    text.textContent='매장: '+(data.store||'확인 안 됨')+
+      '\n총액: '+won(Number(data.total||0))+
+      '\n상품:\n'+items.map((x,i)=>(i+1)+'. '+(x.name||'')+' / '+(x.qty||1)+'개 / '+won(Number(x.amount||0))).join('\n');
+    if(data.store)document.getElementById('storeName').value='기타';
+    status.textContent='영수증 인식 완료. 필요한 상품을 소싱기록에 직접 저장하세요.';
+  }catch(e){
+    status.textContent='영수증 인식 실패: '+e.message;
+  }
+}
+
+async function recognizePriceTag(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  const status=document.getElementById('documentStatus');
+  const box=document.getElementById('documentResult');
+  const text=document.getElementById('documentResultText');
+  status.textContent='매대 가격표를 인식하고 있습니다.';
+  try{
+    const data=await uploadDocumentImage(file,'/api/recognize-price-tag');
+    box.style.display='block';
+    text.textContent='상품명: '+(data.product_name||'')+
+      '\n가격: '+won(Number(data.price||0))+
+      '\n행사: '+(data.promotion||'없음')+
+      '\n용량/구성: '+(data.volume||'확인 안 됨');
+    if(data.product_name)document.getElementById('recognizedName').value=data.product_name;
+    if(data.price){
+      document.getElementById('unitCost').value=Number(data.price);
+      calc();
+      checkResourcingAlert();
+    }
+    status.textContent='가격표 인식 완료. 상품명과 가격을 확인하세요.';
+  }catch(e){
+    status.textContent='가격표 인식 실패: '+e.message;
+  }
+}
+
+function generateSourcingMemo(){
+  const d=currentCalcData();
+  const store=document.getElementById('storeName').value;
+  const marketBundle=Number(document.getElementById('marketBundle').value||0);
+  const verdict=d.profit<=0?'구매 제외':(d.margin>=15?'매우 좋음':(d.margin>=10?'소싱 가능':'재검토'));
+  const memo=[
+    '상품: '+d.name,
+    '매장: '+store,
+    '소싱가: '+won(d.unitCost),
+    '쿠팡 판매가: '+won(d.sale),
+    '내 판매 구성: '+d.bundle+'개',
+    '쿠팡 확인 구성: '+(marketBundle?marketBundle+'개':'미확인'),
+    '예상 순이익: '+won(d.profit),
+    '마진율: '+Number(d.margin).toFixed(1)+'%',
+    '판정: '+verdict,
+    '기록일: '+new Date().toLocaleString('ko-KR')
+  ].join('\n');
+  document.getElementById('sourcingMemo').value=memo;
+  return memo;
+}
+
+function saveMemoOnly(){
+  const memo=document.getElementById('sourcingMemo').value.trim();
+  if(!memo){alert('메모를 먼저 작성하세요.');return;}
+  const list=readList('alldaypick_sourcing_memos');
+  list.unshift({id:Date.now(),date:new Date().toISOString(),memo});
+  writeList('alldaypick_sourcing_memos',list.slice(0,1000));
+  alert('소싱 메모를 저장했습니다.');
+}
+
+function renderTop10(type='profit'){
+  const today=new Date().toDateString();
+  let list=readList('alldaypick_sourcing_records').filter(x=>new Date(x.date).toDateString()===today);
+  list.sort((a,b)=>type==='margin'?Number(b.margin)-Number(a.margin):Number(b.profit)-Number(a.profit));
+  list=list.slice(0,10);
+  document.getElementById('topProfitTab').className='tab-btn '+(type==='profit'?'active':'secondary');
+  document.getElementById('topMarginTab').className='tab-btn '+(type==='margin'?'active':'secondary');
+  const box=document.getElementById('top10List');
+  if(!list.length){
+    box.innerHTML='<div class="empty">오늘 저장한 소싱기록이 없습니다.</div>';
+    return;
+  }
+  box.innerHTML=list.map((x,i)=>`<div class="top10-item">
+    <div class="top10-rank">${i+1}</div>
+    <div><div class="record-title">${escapeHtml(x.name)}</div><div class="record-meta">${x.bundle}개 구성 · 마진율 ${Number(x.margin).toFixed(1)}%</div></div>
+    <div class="top10-profit">${won(x.profit)}</div>
+  </div>`).join('');
+}
+
+function saveFailedProduct(){
+  const name=document.getElementById('failName').value.trim();
+  if(!name){alert('상품명을 입력하세요.');return;}
+  const list=readList('alldaypick_failed_products');
+  list.unshift({
+    id:Date.now(),
+    date:new Date().toISOString(),
+    name,
+    reason:document.getElementById('failReason').value,
+    store:document.getElementById('storeName')?document.getElementById('storeName').value:'',
+    unitCost:Number(document.getElementById('unitCost')?.value||0),
+    sale:Number(document.getElementById('sale')?.value||0)
+  });
+  writeList('alldaypick_failed_products',list.slice(0,2000));
+  document.getElementById('failName').value='';
+  renderFailedProducts();
+}
+
+function quickFailCurrent(){
+  const name=document.getElementById('recognizedName').value.trim();
+  if(!name){alert('상품명을 먼저 입력하세요.');return;}
+  document.getElementById('failName').value=name;
+  showPage('more');
+  document.getElementById('failReason').focus();
+}
+
+function renderFailedProducts(){
+  const box=document.getElementById('failedProductList');
+  if(!box)return;
+  const list=readList('alldaypick_failed_products').slice(0,50);
+  if(!list.length){
+    box.innerHTML='<div class="empty">저장된 실패 상품이 없습니다.</div>';
+    return;
+  }
+  box.innerHTML=list.map(x=>`<div class="record-card">
+    <div class="record-title">${escapeHtml(x.name)}</div>
+    <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${escapeHtml(x.reason)}${x.store?' · '+escapeHtml(x.store):''}</div>
+    <button class="secondary small-btn" onclick="deleteById('alldaypick_failed_products',${x.id});renderFailedProducts()" style="margin-top:8px">삭제</button>
+  </div>`).join('');
+}
+
+function getMonthPrefix(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function renderMonthlyReport(){
+  const prefix=getMonthPrefix();
+  const source=readList('alldaypick_sourcing_records').filter(x=>String(x.date).startsWith(prefix));
+  const recent=readList('alldaypick_recent');
+  const failed=readList('alldaypick_failed_products').filter(x=>String(x.date).startsWith(prefix));
+  const cartKeys=Object.keys(localStorage).filter(k=>k.startsWith('alldaypick_today_cart_'+prefix));
+  let cart=[];
+  cartKeys.forEach(k=>{try{cart=cart.concat(JSON.parse(localStorage.getItem(k)||'[]'))}catch(e){}});
+
+  const totalCost=cart.reduce((s,x)=>s+Number(x.unitCost||0)*Number(x.buyQty||0),0);
+  const totalProfit=cart.reduce((s,x)=>s+Number(x.profit||0)*Number(x.buyQty||0),0);
+
+  const storeMap={};
+  source.forEach(x=>{
+    const store=x.store||'미지정';
+    storeMap[store]=(storeMap[store]||0)+Number(x.profit||0);
+  });
+  const bestStore=Object.entries(storeMap).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('reportSearchCount').textContent=recent.length+'개';
+  document.getElementById('reportBuyCount').textContent=cart.length+'개';
+  document.getElementById('reportCost').textContent=won(totalCost);
+  document.getElementById('reportProfit').textContent=won(totalProfit);
+  document.getElementById('reportFailCount').textContent=failed.length+'개';
+  document.getElementById('reportBestStore').textContent=bestStore?bestStore[0]:'-';
+}
+
+function exportMonthlyReportXLSX(){
+  const prefix=getMonthPrefix();
+  const source=readList('alldaypick_sourcing_records').filter(x=>String(x.date).startsWith(prefix));
+  const failed=readList('alldaypick_failed_products').filter(x=>String(x.date).startsWith(prefix));
+  const rows=[
+    ['월',prefix],
+    ['소싱기록 수',source.length],
+    ['실패상품 수',failed.length],
+    [],
+    ['상품명','매장','판매가','소싱가','순이익','마진율','일시'],
+    ...source.map(x=>[x.name,x.store||'',x.sale,x.unitCost,x.profit,Number(x.margin).toFixed(2)+'%',x.date]),
+    [],
+    ['실패상품','이유','매장','일시'],
+    ...failed.map(x=>[x.name,x.reason,x.store||'',x.date])
+  ];
+  downloadWorkbook('월간_소싱리포트_'+prefix+'.xlsx','월간리포트',rows);
+}
+
+
 function saveDefaults(){
   const ids=['bundle','sale','unitCost','other','fee','tax','ship','target'];
   const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
@@ -1269,6 +1686,10 @@ function resetCalc(){
   renderSales();
   renderDashboard();
   renderTodayCart();
+  validateComposition();
+  renderTop10('profit');
+  renderFailedProducts();
+  renderMonthlyReport();
 })();
 </script>
 </body>

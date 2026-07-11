@@ -117,6 +117,95 @@ def find_price():
     except Exception as exc:
         return jsonify(error=f"가격 자동 확인 실패: {exc}", price=0), 502
 
+
+@app.post("/api/recognize-receipt")
+def recognize_receipt():
+    image = request.files.get("image")
+    if image is None:
+        return jsonify(error="사진 파일이 없습니다."), 400
+
+    mime = image.mimetype or "image/jpeg"
+    if mime not in ALLOWED_TYPES:
+        return jsonify(error="JPG, PNG, WEBP만 지원합니다."), 400
+
+    raw = image.read()
+    data_url = f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+
+    prompt = """
+한국 마트 영수증 사진을 분석하라.
+사진에서 실제로 확인되는 내용만 사용하고 추측하지 마라.
+반드시 JSON 하나만 반환:
+{
+  "store": "매장명 또는 빈 문자열",
+  "date": "날짜 또는 빈 문자열",
+  "total": 0,
+  "items": [
+    {"name":"상품명","qty":1,"amount":0}
+  ],
+  "confidence":"높음|보통|낮음"
+}
+"""
+
+    try:
+        response = get_client().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            input=[{
+                "role":"user",
+                "content":[
+                    {"type":"input_text","text":prompt},
+                    {"type":"input_image","image_url":data_url}
+                ]
+            }],
+            max_output_tokens=900
+        )
+        return jsonify(parse_json(response.output_text))
+    except Exception as exc:
+        return jsonify(error=f"영수증 인식 오류: {exc}"), 502
+
+
+@app.post("/api/recognize-price-tag")
+def recognize_price_tag():
+    image = request.files.get("image")
+    if image is None:
+        return jsonify(error="사진 파일이 없습니다."), 400
+
+    mime = image.mimetype or "image/jpeg"
+    if mime not in ALLOWED_TYPES:
+        return jsonify(error="JPG, PNG, WEBP만 지원합니다."), 400
+
+    raw = image.read()
+    data_url = f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+
+    prompt = """
+한국 마트의 상품 매대 가격표 사진을 분석하라.
+사진에 실제로 보이는 상품명, 판매가격, 행사정보, 용량/구성만 사용하고 추측하지 마라.
+반드시 JSON 하나만 반환:
+{
+  "product_name":"",
+  "price":0,
+  "promotion":"",
+  "volume":"",
+  "confidence":"높음|보통|낮음"
+}
+"""
+
+    try:
+        response = get_client().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            input=[{
+                "role":"user",
+                "content":[
+                    {"type":"input_text","text":prompt},
+                    {"type":"input_image","image_url":data_url}
+                ]
+            }],
+            max_output_tokens=400
+        )
+        return jsonify(parse_json(response.output_text))
+    except Exception as exc:
+        return jsonify(error=f"가격표 인식 오류: {exc}"), 502
+
+
 @app.errorhandler(404)
 def not_found(_):
     return send_from_directory(BASE_DIR, "index.html")
