@@ -81,6 +81,30 @@
   .tab-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
   .tab-btn.active{background:#17365D;color:#fff}
 
+  .app-nav{position:sticky;top:8px;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:12px 0;background:rgba(243,245,247,.94);backdrop-filter:blur(10px);padding:6px;border-radius:15px}
+  .app-nav button{padding:10px 3px;border-radius:10px;font-size:11px;background:#e9edf2;color:#222}
+  .app-nav button.active{background:#17365D;color:#fff}
+  .page{display:none}.page.active{display:block}
+  .market-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+  .market-btn{background:#eef3f8;color:#17365D}
+  .section-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .record-card{border:1px solid #e4e8ed;border-radius:14px;padding:12px;margin-bottom:9px;background:#fafbfc}
+  .record-title{font-size:14px;font-weight:900;line-height:1.4}
+  .record-meta{font-size:12px;color:#68717d;line-height:1.55;margin-top:5px}
+  .record-profit{font-size:18px;font-weight:900;margin-top:7px}
+  .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .toolbar select,.toolbar input{font-size:14px;padding:11px;height:44px}
+  .dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dash-box{border-radius:14px;padding:14px;background:#f3f6f9;text-align:center}
+  .dash-label{font-size:12px;color:#66707c;font-weight:800}
+  .dash-value{font-size:22px;font-weight:900;margin-top:5px}
+  .danger{background:#f4cccc;color:#9f0019}
+  .success{background:#d9ead3;color:#176b28}
+  .switch-line{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:800}
+  .switch-line input{width:20px;height:20px;padding:0}
+  .legal{font-size:12px;color:#68717d;line-height:1.65}
+  .usage-bar{height:10px;background:#e7ebef;border-radius:999px;overflow:hidden;margin-top:8px}
+  .usage-fill{height:100%;background:#17365D;width:0}
   @media(max-width:390px){ .grid2{grid-template-columns:1fr;} .profit{font-size:34px;} .top-summary{grid-template-columns:1fr;} }
 </style>
 </head>
@@ -91,11 +115,20 @@
     <p>사진·음성·바코드 검색과 실마진 계산을 한 번에 사용합니다.</p>
   </section>
 
+  <nav class="app-nav">
+    <button id="navCalc" class="active" onclick="showPage('calc')">소싱</button>
+    <button id="navRecords" onclick="showPage('records')">기록</button>
+    <button id="navInventory" onclick="showPage('inventory')">재고</button>
+    <button id="navSales" onclick="showPage('sales')">판매</button>
+    <button id="navMore" onclick="showPage('more')">통계</button>
+  </nav>
+
   <div id="installBar" class="install-bar">
     <span>휴대폰 홈 화면에 앱처럼 설치할 수 있습니다.</span>
     <button class="primary small-btn" onclick="installApp()">설치</button>
   </div>
 
+  <main id="pageCalc" class="page active">
   <section class="top-summary">
     <div class="summary-box">
       <div class="summary-label">쿠팡 판매가</div>
@@ -281,6 +314,115 @@
       <button class="primary" onclick="saveDefaults()">현재값 저장</button>
     </div>
   </section>
+
+  <section class="card">
+    <h2 class="title">현재 상품 저장·가격비교</h2>
+    <div class="section-actions">
+      <button class="primary" onclick="saveSourcingRecord()">소싱기록 저장</button>
+      <button class="secondary" onclick="addCurrentToInventory()">재고에 추가</button>
+    </div>
+    <div class="market-grid">
+      <button class="market-btn" onclick="openMarket('coupang')">쿠팡</button>
+      <button class="market-btn" onclick="openMarket('naver')">네이버쇼핑</button>
+      <button class="market-btn" onclick="openMarket('11st')">11번가</button>
+      <button class="market-btn" onclick="openMarket('gmarket')">G마켓</button>
+    </div>
+    <label class="switch-line"><input id="rapidMode" type="checkbox"> 사진 인식 후 최근검색과 임시 소싱기록 자동 저장</label>
+  </section>
+  </main>
+
+  <main id="pageRecords" class="page">
+    <section class="card">
+      <h2 class="title">소싱기록</h2>
+      <div class="toolbar">
+        <select id="recordSort" onchange="renderSourcingRecords()">
+          <option value="new">최근순</option>
+          <option value="profit">순이익 높은순</option>
+          <option value="margin">마진율 높은순</option>
+          <option value="cost">소싱가 낮은순</option>
+        </select>
+        <input id="recordSearch" type="text" placeholder="상품명 검색" oninput="renderSourcingRecords()">
+      </div>
+      <div class="section-actions">
+        <button class="secondary" onclick="exportSourcingCSV()">CSV 내보내기</button>
+        <button class="danger" onclick="clearData('alldaypick_sourcing_records','소싱기록')">전체 삭제</button>
+      </div>
+      <div id="sourcingRecordList" style="margin-top:12px"></div>
+    </section>
+  </main>
+
+  <main id="pageInventory" class="page">
+    <section class="card">
+      <h2 class="title">재고관리</h2>
+      <div class="grid2">
+        <div class="field"><label>상품명</label><input id="invName" type="text" placeholder="상품명"></div>
+        <div class="field"><label>현재 재고</label><input id="invQty" type="number" value="1"></div>
+        <div class="field"><label>개당 매입가</label><input id="invCost" type="number" value="0"></div>
+        <div class="field"><label>안전재고</label><input id="invMin" type="number" value="2"></div>
+      </div>
+      <button class="primary" style="width:100%" onclick="saveInventory()">재고 저장</button>
+      <div class="section-actions">
+        <button class="secondary" onclick="exportInventoryCSV()">CSV 내보내기</button>
+        <button class="danger" onclick="clearData('alldaypick_inventory','재고')">전체 삭제</button>
+      </div>
+      <div id="inventoryList" style="margin-top:12px"></div>
+    </section>
+  </main>
+
+  <main id="pageSales" class="page">
+    <section class="card">
+      <h2 class="title">판매·순이익 관리</h2>
+      <div class="grid2">
+        <div class="field"><label>상품명</label><input id="saleName" type="text" placeholder="상품명"></div>
+        <div class="field"><label>판매수량</label><input id="saleQty" type="number" value="1"></div>
+        <div class="field"><label>총 판매금액</label><input id="saleRevenue" type="number" value="0"></div>
+        <div class="field"><label>총 매입원가</label><input id="saleCost" type="number" value="0"></div>
+        <div class="field"><label>수수료</label><input id="saleFee" type="number" value="0"></div>
+        <div class="field"><label>배송·기타비</label><input id="saleExpense" type="number" value="0"></div>
+      </div>
+      <button class="primary" style="width:100%" onclick="saveSale()">판매기록 저장</button>
+      <div class="section-actions">
+        <button class="secondary" onclick="exportSalesCSV()">CSV 내보내기</button>
+        <button class="danger" onclick="clearData('alldaypick_sales','판매기록')">전체 삭제</button>
+      </div>
+      <div id="salesList" style="margin-top:12px"></div>
+    </section>
+  </main>
+
+  <main id="pageMore" class="page">
+    <section class="card">
+      <h2 class="title">오늘의 소싱 현황</h2>
+      <div class="dashboard-grid">
+        <div class="dash-box"><div class="dash-label">소싱 상품</div><div id="dashSourceCount" class="dash-value">0개</div></div>
+        <div class="dash-box"><div class="dash-label">예상 순이익 합계</div><div id="dashSourceProfit" class="dash-value">0원</div></div>
+        <div class="dash-box"><div class="dash-label">현재 재고금액</div><div id="dashInventoryValue" class="dash-value">0원</div></div>
+        <div class="dash-box"><div class="dash-label">누적 판매순이익</div><div id="dashSalesProfit" class="dash-value">0원</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">무료체험 사용량 표시</h2>
+      <div class="row"><span>사진 AI 인식 횟수</span><strong id="usageText">0 / 20회</strong></div>
+      <div class="usage-bar"><div id="usageFill" class="usage-fill"></div></div>
+      <div class="muted">현재 표시는 이 휴대폰에만 저장되는 데모용입니다. 실제 유료 판매 시에는 회원가입·서버 사용량 관리·결제 연동이 추가되어야 합니다.</div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">전체 데이터</h2>
+      <div class="section-actions">
+        <button class="secondary" onclick="backupAllData()">전체 백업</button>
+        <button class="secondary" onclick="document.getElementById('restoreFile').click()">백업 복원</button>
+      </div>
+      <input id="restoreFile" type="file" accept="application/json" style="display:none" onchange="restoreAllData(event)">
+    </section>
+
+    <section class="card">
+      <h2 class="title">판매 전 준비사항</h2>
+      <div class="legal">
+        현재 버전은 개인 사용과 사용자 테스트가 가능한 판매형 MVP입니다. 실제 구독 판매를 시작하려면 회원가입, 서버 데이터베이스, 결제, 이용약관, 개인정보처리방침, 환불정책, 고객문의 기능을 별도로 연결해야 합니다. 쿠팡 검색결과는 쿠팡 보안정책 때문에 앱 화면 안에 직접 삽입하지 않고 새 화면으로 엽니다. 자동 가격은 검색 기반 후보이므로 실제 옵션·수량·쿠폰 가격을 확인해야 합니다.
+      </div>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -526,6 +668,7 @@ function startVoiceInput(){
 }
 async function recognizeAndSearch(event){
   const file=event.target.files&&event.target.files[0];if(!file)return;
+  incrementAIUsage();
   const preview=document.getElementById('aiPreview'),status=document.getElementById('aiStatus'),input=document.getElementById('recognizedName');
   preview.src=URL.createObjectURL(file);preview.style.display='block';document.getElementById('priceCandidate').style.display='none';
   latestCandidatePrice=0;input.value='';status.textContent='사진에서 상품명을 인식하고 있습니다.';
@@ -535,6 +678,7 @@ async function recognizeAndSearch(event){
     if(!response.ok)throw new Error(data.error||'상품 인식 실패');
     const keyword=(data.search_query||data.product_name||'').trim();if(!keyword)throw new Error('상품명을 읽지 못했습니다.');
     input.value=keyword;addRecent(keyword);status.textContent='상품명 인식 완료. 쿠팡 검색과 가격 확인을 시작합니다.';
+    if(document.getElementById('rapidMode')&&document.getElementById('rapidMode').checked){saveSourcingRecord(true);}
     openCoupangSearch(keyword);findPriceCandidate(keyword);
   }catch(err){status.textContent='자동 인식 실패: '+err.message;}
 }
@@ -573,6 +717,219 @@ function applyCandidatePrice(){
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;document.getElementById('installBar').style.display='flex';});
 async function installApp(){if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;document.getElementById('installBar').style.display='none';}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
+
+const STORE_KEYS=['alldaypick_sourcing_records','alldaypick_inventory','alldaypick_sales','alldaypick_recent','alldaypick_favorites','bundleSourcingCalc','alldaypick_ai_usage'];
+
+function showPage(name){
+  ['Calc','Records','Inventory','Sales','More'].forEach(x=>{
+    const page=document.getElementById('page'+x);
+    const nav=document.getElementById('nav'+x);
+    if(page) page.classList.toggle('active',x.toLowerCase()===name);
+    if(nav) nav.classList.toggle('active',x.toLowerCase()===name);
+  });
+  if(name==='records') renderSourcingRecords();
+  if(name==='inventory') renderInventory();
+  if(name==='sales') renderSales();
+  if(name==='more') renderDashboard();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function currentCalcData(){
+  const bundle=n('bundle'),sale=n('sale'),unitCost=n('unitCost'),other=n('other');
+  const feeRate=n('fee')/100,taxRate=n('tax')/100,ship=n('ship'),targetRate=n('target')/100;
+  const r=compute(bundle,sale,unitCost,other,feeRate,taxRate,ship,targetRate);
+  return {
+    id:Date.now(),
+    date:new Date().toISOString(),
+    name:(document.getElementById('recognizedName').value||'상품명 미입력').trim(),
+    bundle,sale,unitCost,other,feeRate:n('fee'),taxRate:n('tax'),ship,targetRate:n('target'),
+    totalCost:r.totalCost,feeAmt:r.feeAmt,vat:r.vat,incomeTax:r.incomeTax,profit:r.profit,
+    margin:sale?100*r.profit/sale:0
+  };
+}
+
+function saveSourcingRecord(silent=false){
+  const data=currentCalcData();
+  let list=readList('alldaypick_sourcing_records');
+  list.unshift(data);
+  writeList('alldaypick_sourcing_records',list.slice(0,1000));
+  if(!silent) alert('소싱기록에 저장했습니다.');
+  renderDashboard();
+}
+
+function renderSourcingRecords(){
+  const box=document.getElementById('sourcingRecordList');if(!box)return;
+  let list=readList('alldaypick_sourcing_records');
+  const q=(document.getElementById('recordSearch')?.value||'').trim().toLowerCase();
+  if(q) list=list.filter(x=>(x.name||'').toLowerCase().includes(q));
+  const sort=document.getElementById('recordSort')?.value||'new';
+  if(sort==='profit') list.sort((a,b)=>b.profit-a.profit);
+  if(sort==='margin') list.sort((a,b)=>b.margin-a.margin);
+  if(sort==='cost') list.sort((a,b)=>a.unitCost-b.unitCost);
+  if(sort==='new') list.sort((a,b)=>b.id-a.id);
+  if(!list.length){box.innerHTML='<div class="empty">저장된 소싱기록이 없습니다.</div>';return;}
+  box.innerHTML=list.map(x=>`<div class="record-card">
+    <div class="record-title">${escapeHtml(x.name)}</div>
+    <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${x.bundle}개 구성<br>판매가 ${won(x.sale)} · 개당 소싱가 ${won(x.unitCost)} · 마진율 ${Number(x.margin).toFixed(1)}%</div>
+    <div class="record-profit ${x.profit>=0?'':'bad'}">순이익 ${won(x.profit)}</div>
+    <div class="small-actions" style="margin-top:8px">
+      <button class="primary small-btn" onclick="loadSourcingRecord(${x.id})">불러오기</button>
+      <button class="secondary small-btn" onclick="deleteById('alldaypick_sourcing_records',${x.id});renderSourcingRecords()">삭제</button>
+    </div>
+  </div>`).join('');
+}
+
+function loadSourcingRecord(id){
+  const x=readList('alldaypick_sourcing_records').find(v=>v.id===id);if(!x)return;
+  document.getElementById('recognizedName').value=x.name;
+  document.getElementById('bundle').value=x.bundle;
+  document.getElementById('sale').value=x.sale;
+  document.getElementById('unitCost').value=x.unitCost;
+  document.getElementById('other').value=x.other;
+  document.getElementById('fee').value=x.feeRate;
+  document.getElementById('tax').value=x.taxRate;
+  document.getElementById('ship').value=x.ship;
+  document.getElementById('target').value=x.targetRate;
+  calc();showPage('calc');
+}
+
+function deleteById(key,id){
+  writeList(key,readList(key).filter(x=>x.id!==id));
+  renderDashboard();
+}
+
+function addCurrentToInventory(){
+  const d=currentCalcData();
+  document.getElementById('invName').value=d.name;
+  document.getElementById('invCost').value=d.unitCost;
+  document.getElementById('invQty').value=1;
+  showPage('inventory');
+}
+
+function saveInventory(){
+  const name=document.getElementById('invName').value.trim();
+  if(!name){alert('상품명을 입력하세요.');return;}
+  let list=readList('alldaypick_inventory');
+  const existing=list.find(x=>x.name===name);
+  const item={id:existing?existing.id:Date.now(),name,qty:Number(document.getElementById('invQty').value)||0,cost:Number(document.getElementById('invCost').value)||0,min:Number(document.getElementById('invMin').value)||0,date:new Date().toISOString()};
+  list=existing?list.map(x=>x.id===existing.id?item:x):[item,...list];
+  writeList('alldaypick_inventory',list);renderInventory();renderDashboard();
+}
+
+function renderInventory(){
+  const box=document.getElementById('inventoryList');if(!box)return;
+  const list=readList('alldaypick_inventory');
+  if(!list.length){box.innerHTML='<div class="empty">등록된 재고가 없습니다.</div>';return;}
+  box.innerHTML=list.map(x=>`<div class="record-card">
+    <div class="record-title">${escapeHtml(x.name)} ${x.qty<=x.min?'<span class="decision bad" style="margin:0 0 0 5px;padding:4px 8px">재고부족</span>':''}</div>
+    <div class="record-meta">재고 ${x.qty}개 · 안전재고 ${x.min}개 · 개당 ${won(x.cost)} · 재고금액 ${won(x.qty*x.cost)}</div>
+    <div class="small-actions" style="margin-top:8px">
+      <button class="secondary small-btn" onclick="changeStock(${x.id},1)">+1</button>
+      <button class="secondary small-btn" onclick="changeStock(${x.id},-1)">-1</button>
+      <button class="secondary small-btn" onclick="deleteById('alldaypick_inventory',${x.id});renderInventory()">삭제</button>
+    </div>
+  </div>`).join('');
+}
+
+function changeStock(id,delta){
+  const list=readList('alldaypick_inventory').map(x=>x.id===id?{...x,qty:Math.max(0,Number(x.qty)+delta)}:x);
+  writeList('alldaypick_inventory',list);renderInventory();renderDashboard();
+}
+
+function saveSale(){
+  const name=document.getElementById('saleName').value.trim();
+  if(!name){alert('상품명을 입력하세요.');return;}
+  const revenue=Number(document.getElementById('saleRevenue').value)||0;
+  const cost=Number(document.getElementById('saleCost').value)||0;
+  const fee=Number(document.getElementById('saleFee').value)||0;
+  const expense=Number(document.getElementById('saleExpense').value)||0;
+  const item={id:Date.now(),date:new Date().toISOString(),name,qty:Number(document.getElementById('saleQty').value)||1,revenue,cost,fee,expense,profit:revenue-cost-fee-expense};
+  const list=readList('alldaypick_sales');list.unshift(item);writeList('alldaypick_sales',list.slice(0,5000));
+  renderSales();renderDashboard();
+}
+
+function renderSales(){
+  const box=document.getElementById('salesList');if(!box)return;
+  const list=readList('alldaypick_sales');
+  if(!list.length){box.innerHTML='<div class="empty">저장된 판매기록이 없습니다.</div>';return;}
+  box.innerHTML=list.map(x=>`<div class="record-card">
+    <div class="record-title">${escapeHtml(x.name)}</div>
+    <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${x.qty}개 판매<br>매출 ${won(x.revenue)} · 비용 ${won(x.cost+x.fee+x.expense)}</div>
+    <div class="record-profit ${x.profit>=0?'':'bad'}">실현 순이익 ${won(x.profit)}</div>
+    <button class="secondary small-btn" onclick="deleteById('alldaypick_sales',${x.id});renderSales()" style="margin-top:8px">삭제</button>
+  </div>`).join('');
+}
+
+function renderDashboard(){
+  const src=readList('alldaypick_sourcing_records');
+  const inv=readList('alldaypick_inventory');
+  const sales=readList('alldaypick_sales');
+  const today=new Date().toDateString();
+  const todaySrc=src.filter(x=>new Date(x.date).toDateString()===today);
+  document.getElementById('dashSourceCount').textContent=todaySrc.length+'개';
+  document.getElementById('dashSourceProfit').textContent=won(todaySrc.reduce((s,x)=>s+Number(x.profit||0),0));
+  document.getElementById('dashInventoryValue').textContent=won(inv.reduce((s,x)=>s+Number(x.qty||0)*Number(x.cost||0),0));
+  document.getElementById('dashSalesProfit').textContent=won(sales.reduce((s,x)=>s+Number(x.profit||0),0));
+  renderUsage();
+}
+
+function openMarket(market){
+  const q=(document.getElementById('recognizedName').value||'').trim();
+  if(!q){alert('상품명을 먼저 입력하세요.');return;}
+  const urls={
+    coupang:'https://www.coupang.com/np/search?q=',
+    naver:'https://search.shopping.naver.com/search/all?query=',
+    '11st':'https://search.11st.co.kr/Search.tmall?kwd=',
+    gmarket:'https://browse.gmarket.co.kr/search?keyword='
+  };
+  window.open(urls[market]+encodeURIComponent(q),'_blank');
+}
+
+function csvDownload(filename,rows){
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+function exportSourcingCSV(){
+  const list=readList('alldaypick_sourcing_records');
+  csvDownload('소싱기록.csv',[['일시','상품명','묶음','판매가','개당소싱가','총소싱가','순이익','마진율'],...list.map(x=>[x.date,x.name,x.bundle,x.sale,x.unitCost,x.totalCost,Math.round(x.profit),Number(x.margin).toFixed(2)])]);
+}
+function exportInventoryCSV(){
+  const list=readList('alldaypick_inventory');
+  csvDownload('재고.csv',[['상품명','재고','개당원가','안전재고','재고금액'],...list.map(x=>[x.name,x.qty,x.cost,x.min,x.qty*x.cost])]);
+}
+function exportSalesCSV(){
+  const list=readList('alldaypick_sales');
+  csvDownload('판매기록.csv',[['일시','상품명','수량','매출','매입원가','수수료','배송기타','순이익'],...list.map(x=>[x.date,x.name,x.qty,x.revenue,x.cost,x.fee,x.expense,x.profit])]);
+}
+
+function clearData(key,label){
+  if(confirm(label+'을(를) 모두 삭제할까요?')){localStorage.removeItem(key);renderSourcingRecords();renderInventory();renderSales();renderDashboard();}
+}
+
+function incrementAIUsage(){
+  const count=Number(localStorage.getItem('alldaypick_ai_usage')||0)+1;
+  localStorage.setItem('alldaypick_ai_usage',String(count));renderUsage();
+}
+function renderUsage(){
+  const count=Number(localStorage.getItem('alldaypick_ai_usage')||0);
+  const t=document.getElementById('usageText'),f=document.getElementById('usageFill');
+  if(t)t.textContent=count+' / 20회';
+  if(f)f.style.width=Math.min(100,count/20*100)+'%';
+}
+
+function backupAllData(){
+  const data={};STORE_KEYS.forEach(k=>data[k]=localStorage.getItem(k));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='올데이픽_전체백업.json';a.click();URL.revokeObjectURL(a.href);
+}
+function restoreAllData(event){
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{try{const data=JSON.parse(reader.result);STORE_KEYS.forEach(k=>{if(data[k]!==null&&data[k]!==undefined)localStorage.setItem(k,data[k]);});alert('복원했습니다.');location.reload();}catch(e){alert('백업 파일을 읽지 못했습니다.');}};
+  reader.readAsText(file);
+}
+
 function saveDefaults(){
   const ids=['bundle','sale','unitCost','other','fee','tax','ship','target'];
   const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
@@ -606,6 +963,10 @@ function resetCalc(){
   }
   calc();
   renderHistory();
+  renderSourcingRecords();
+  renderInventory();
+  renderSales();
+  renderDashboard();
 })();
 </script>
 </body>
