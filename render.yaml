@@ -10,3 +10,5 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+      - key: OPENAI_SEARCH_MODEL
+        value: gpt-4.1

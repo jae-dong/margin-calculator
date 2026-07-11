@@ -89,19 +89,34 @@
   </section>
 
   <section class="ai-card">
-    <h2 class="title">사진으로 상품 찾기</h2>
+    <h2 class="title">쿠팡 상품 빠른 검색</h2>
+
+    <div class="field">
+      <label for="recognizedName">상품명</label>
+      <div class="inputbox">
+        <input id="recognizedName" type="text" placeholder="직접 입력·음성 입력·사진 인식">
+      </div>
+    </div>
+
     <div class="ai-actions">
-      <button class="secondary ai-wide" type="button" onclick="document.getElementById('productPhoto').click()">제품 사진 촬영</button>
-      <input id="productPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeProduct(event)">
-      <button class="secondary" type="button" onclick="document.getElementById('productPhoto').click()">다시 촬영</button>
-      <button class="primary" type="button" onclick="openCoupang()">쿠팡 검색</button>
+      <button class="secondary" type="button" onclick="startVoiceInput()">음성으로 검색</button>
+      <button class="primary" type="button" onclick="searchManualProduct()">상품명으로 쿠팡 검색</button>
+
+      <button class="secondary ai-wide" type="button" onclick="document.getElementById('productPhoto').click()">사진 한 번 촬영 → 자동 인식·검색</button>
+      <input id="productPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeAndSearch(event)">
     </div>
+
     <img id="aiPreview" class="ai-preview" alt="촬영한 상품 사진">
-    <div id="aiResult" class="ai-result">
-      <label for="recognizedName">AI 인식 상품명</label>
-      <input id="recognizedName" type="text" placeholder="브랜드 제품명 용량">
+
+    <div id="priceCandidate" class="ai-result">
+      <div style="font-weight:900;margin-bottom:8px">쿠팡 가격 후보</div>
+      <div id="candidateTitle" style="font-size:13px;line-height:1.45;margin-bottom:6px"></div>
+      <div id="candidatePrice" style="font-size:26px;font-weight:900;color:#0b6b2c"></div>
+      <div style="font-size:12px;color:#6d7480;margin-top:7px">검색 결과의 가격 후보입니다. 실제 구성과 현재 가격을 쿠팡 화면에서 확인하세요.</div>
+      <button class="primary" type="button" onclick="applyCandidatePrice()" style="width:100%;margin-top:10px">이 가격을 판매가에 입력</button>
     </div>
-    <div id="aiStatus" class="ai-status">제품 앞면의 브랜드명·제품명·용량이 선명하게 보이도록 촬영하세요.</div>
+
+    <div id="aiStatus" class="ai-status">사진 촬영 시 상품명을 인식하고 쿠팡 검색을 자동으로 엽니다.</div>
   </section>
 
   <section class="card">
@@ -366,20 +381,76 @@ function calc(){
 }
 
 
-async function recognizeProduct(event){
+
+let latestCandidatePrice = 0;
+
+function coupangSearchUrl(keyword){
+  return 'https://www.coupang.com/np/search?q=' + encodeURIComponent(keyword);
+}
+
+function openCoupangSearch(keyword){
+  window.open(coupangSearchUrl(keyword), '_blank');
+}
+
+function searchManualProduct(){
+  const input=document.getElementById('recognizedName');
+  const keyword=input.value.trim();
+  const status=document.getElementById('aiStatus');
+  if(!keyword){
+    status.textContent='상품명을 입력해 주세요.';
+    input.focus();
+    return;
+  }
+  status.textContent='쿠팡 검색을 열었습니다.';
+  openCoupangSearch(keyword);
+  findPriceCandidate(keyword);
+}
+
+function startVoiceInput(){
+  const status=document.getElementById('aiStatus');
+  const input=document.getElementById('recognizedName');
+  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+  if(!Recognition){
+    status.textContent='이 브라우저는 음성 인식을 지원하지 않습니다. 휴대폰 키보드 마이크를 이용해 주세요.';
+    input.focus();
+    return;
+  }
+
+  const recognition=new Recognition();
+  recognition.lang='ko-KR';
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+  status.textContent='상품명을 말씀해 주세요.';
+  recognition.start();
+
+  recognition.onresult=function(event){
+    const text=event.results[0][0].transcript.trim();
+    input.value=text;
+    status.textContent='음성 인식 완료. 쿠팡 검색을 엽니다.';
+    openCoupangSearch(text);
+    findPriceCandidate(text);
+  };
+
+  recognition.onerror=function(){
+    status.textContent='음성 인식에 실패했습니다. 다시 시도해 주세요.';
+  };
+}
+
+async function recognizeAndSearch(event){
   const file=event.target.files&&event.target.files[0];
   if(!file) return;
 
   const preview=document.getElementById('aiPreview');
   const status=document.getElementById('aiStatus');
-  const result=document.getElementById('aiResult');
   const input=document.getElementById('recognizedName');
 
   preview.src=URL.createObjectURL(file);
   preview.style.display='block';
-  result.style.display='none';
+  document.getElementById('priceCandidate').style.display='none';
+  latestCandidatePrice=0;
   input.value='';
-  status.textContent='AI가 상품명을 인식하고 있습니다. 잠시만 기다려 주세요.';
+  status.textContent='사진에서 상품명을 인식하고 있습니다.';
 
   const form=new FormData();
   form.append('image',file);
@@ -387,28 +458,54 @@ async function recognizeProduct(event){
   try{
     const response=await fetch('/api/recognize',{method:'POST',body:form});
     const data=await response.json();
+    if(!response.ok) throw new Error(data.error||'상품 인식 실패');
 
-    if(!response.ok){
-      throw new Error(data.error||'상품 인식에 실패했습니다.');
-    }
+    const keyword=(data.search_query||data.product_name||'').trim();
+    if(!keyword) throw new Error('상품명을 읽지 못했습니다.');
 
-    input.value=data.search_query||data.product_name||'';
-    result.style.display='block';
-    status.textContent='인식된 상품명을 확인한 뒤 쿠팡 검색 버튼을 누르세요. 인식 신뢰도: '+(data.confidence||'보통');
+    input.value=keyword;
+    status.textContent='상품명 인식 완료. 쿠팡 검색을 자동으로 엽니다.';
+    openCoupangSearch(keyword);
+    findPriceCandidate(keyword);
   }catch(err){
-    result.style.display='block';
-    status.textContent='자동 인식 실패: '+err.message+' 상품명을 직접 입력한 뒤 쿠팡 검색을 누르세요.';
+    status.textContent='자동 인식 실패: '+err.message;
   }
 }
 
-function openCoupang(){
-  const keyword=document.getElementById('recognizedName').value.trim();
+async function findPriceCandidate(keyword){
   const status=document.getElementById('aiStatus');
-  if(!keyword){
-    status.textContent='먼저 사진을 촬영하거나 상품명을 입력해 주세요.';
-    return;
+  const box=document.getElementById('priceCandidate');
+  box.style.display='none';
+  latestCandidatePrice=0;
+
+  try{
+    const response=await fetch('/api/find-price',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:keyword})
+    });
+    const data=await response.json();
+
+    if(!response.ok || !data.price){
+      status.textContent='쿠팡 검색은 열었습니다. 자동 가격 확인은 실패했으니 실제 가격을 직접 입력해 주세요.';
+      return;
+    }
+
+    latestCandidatePrice=Number(data.price)||0;
+    document.getElementById('candidateTitle').textContent=data.title||keyword;
+    document.getElementById('candidatePrice').textContent=Math.round(latestCandidatePrice).toLocaleString('ko-KR')+'원';
+    box.style.display='block';
+    status.textContent='가격 후보를 찾았습니다. 실제 상품 구성과 가격을 확인하세요.';
+  }catch(e){
+    status.textContent='쿠팡 검색은 열었습니다. 자동 가격 확인은 실패했습니다.';
   }
-  window.open('https://www.coupang.com/np/search?q='+encodeURIComponent(keyword),'_blank');
+}
+
+function applyCandidatePrice(){
+  if(!latestCandidatePrice) return;
+  document.getElementById('sale').value=Math.round(latestCandidatePrice);
+  calc();
+  document.getElementById('aiStatus').textContent='가격 후보를 쿠팡 판매가에 입력했습니다.';
 }
 
 function saveDefaults(){
