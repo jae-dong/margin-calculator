@@ -16,6 +16,23 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 def home():
     return send_from_directory(BASE_DIR, "index.html")
 
+
+@app.get("/manifest.json")
+def manifest():
+    return send_from_directory(BASE_DIR, "manifest.json", mimetype="application/manifest+json")
+
+@app.get("/sw.js")
+def service_worker():
+    return send_from_directory(BASE_DIR, "sw.js", mimetype="application/javascript")
+
+@app.get("/icon-192.png")
+def icon192():
+    return send_from_directory(BASE_DIR, "icon-192.png")
+
+@app.get("/icon-512.png")
+def icon512():
+    return send_from_directory(BASE_DIR, "icon-512.png")
+
 @app.get("/health")
 def health():
     return jsonify(status="ok")

@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#17365D">
-<title>마진계산기</title>
+<title>올데이픽 AI 소싱계산기</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <style>
   * { box-sizing: border-box; }
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif; background:#f3f5f7; color:#111; }
@@ -63,15 +65,36 @@
   .ai-preview{display:none;width:100%;max-height:280px;object-fit:contain;border-radius:14px;margin-top:12px;background:#f3f5f7}
   .ai-result{display:none;margin-top:12px;padding:13px;background:#eef6ff;border-radius:14px}
   .ai-status{margin-top:10px;font-size:13px;line-height:1.55;color:#5f6873;font-weight:700}
+
+  .quick-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .history-list{display:grid;gap:8px;max-height:360px;overflow:auto}
+  .history-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:11px;border:1px solid #e5e8eb;border-radius:13px;background:#fafbfc}
+  .history-name{font-size:14px;font-weight:900;line-height:1.35;word-break:break-word}
+  .history-meta{font-size:12px;color:#6d7480;margin-top:4px}
+  .small-actions{display:flex;gap:6px}
+  .small-btn{padding:8px 10px;border-radius:10px;font-size:12px}
+  .star-btn{background:#fff1b8;color:#6b5200}
+  .empty{text-align:center;color:#8a919b;padding:18px 8px;font-size:13px}
+  .install-bar{display:none;background:#fff;border-radius:16px;padding:12px;margin-top:12px;box-shadow:0 8px 22px rgba(0,0,0,.09);align-items:center;justify-content:space-between;gap:10px}
+  .install-bar span{font-size:13px;font-weight:800}
+  .barcode-help{font-size:12px;color:#6d7480;line-height:1.45;margin-top:7px}
+  .tab-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .tab-btn.active{background:#17365D;color:#fff}
+
   @media(max-width:390px){ .grid2{grid-template-columns:1fr;} .profit{font-size:34px;} .top-summary{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <section class="header">
-    <h1>마진계산기</h1>
-    <p>1개부터 6개 묶음 판매 시 택배비는 주문당 한 번만 적용합니다.</p>
+    <h1>올데이픽 AI 소싱계산기</h1>
+    <p>사진·음성·바코드 검색과 실마진 계산을 한 번에 사용합니다.</p>
   </section>
+
+  <div id="installBar" class="install-bar">
+    <span>휴대폰 홈 화면에 앱처럼 설치할 수 있습니다.</span>
+    <button class="primary small-btn" onclick="installApp()">설치</button>
+  </div>
 
   <section class="top-summary">
     <div class="summary-box">
@@ -89,34 +112,49 @@
   </section>
 
   <section class="ai-card">
-    <h2 class="title">쿠팡 상품 빠른 검색</h2>
+    <h2 class="title">상품 찾기</h2>
 
     <div class="field">
       <label for="recognizedName">상품명</label>
       <div class="inputbox">
-        <input id="recognizedName" type="text" placeholder="직접 입력·음성 입력·사진 인식">
+        <input id="recognizedName" type="text" placeholder="직접 입력·음성 입력·사진 인식" onkeydown="if(event.key==='Enter') searchManualProduct()">
       </div>
     </div>
 
     <div class="ai-actions">
       <button class="secondary" type="button" onclick="startVoiceInput()">음성으로 검색</button>
-      <button class="primary" type="button" onclick="searchManualProduct()">상품명으로 쿠팡 검색</button>
-
-      <button class="secondary ai-wide" type="button" onclick="document.getElementById('productPhoto').click()">사진 한 번 촬영 → 자동 인식·검색</button>
+      <button class="primary" type="button" onclick="searchManualProduct()">상품명 검색</button>
+      <button class="secondary ai-wide" type="button" onclick="document.getElementById('productPhoto').click()">사진 한 번 촬영 → 자동 검색·가격입력</button>
       <input id="productPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeAndSearch(event)">
+      <button class="secondary ai-wide" type="button" onclick="document.getElementById('barcodePhoto').click()">바코드 촬영 → 자동 검색</button>
+      <input id="barcodePhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="scanBarcodePhoto(event)">
     </div>
+    <div class="barcode-help">바코드는 휴대폰 브라우저 지원 여부에 따라 자동 인식이 안 될 수 있습니다. 그때는 제품 앞면 사진이나 음성검색을 사용하세요.</div>
 
     <img id="aiPreview" class="ai-preview" alt="촬영한 상품 사진">
 
     <div id="priceCandidate" class="ai-result">
-      <div style="font-weight:900;margin-bottom:8px">쿠팡 가격 후보</div>
+      <div style="font-weight:900;margin-bottom:8px">가격 후보 자동 입력 결과</div>
       <div id="candidateTitle" style="font-size:13px;line-height:1.45;margin-bottom:6px"></div>
       <div id="candidatePrice" style="font-size:26px;font-weight:900;color:#0b6b2c"></div>
-      <div style="font-size:12px;color:#6d7480;margin-top:7px">검색 결과의 가격 후보입니다. 실제 구성과 현재 가격을 쿠팡 화면에서 확인하세요.</div>
-      <button class="primary" type="button" onclick="applyCandidatePrice()" style="width:100%;margin-top:10px">이 가격을 판매가에 입력</button>
+      <div style="font-size:12px;color:#6d7480;margin-top:7px">자동으로 판매가에 입력했습니다. 쿠팡 화면에서 상품 구성·와우가·쿠폰가를 반드시 확인하세요.</div>
+      <div class="quick-tools">
+        <button class="secondary" type="button" onclick="openCurrentCoupang()">쿠팡 다시 열기</button>
+        <button class="star-btn" type="button" onclick="favoriteCurrent()">즐겨찾기 저장</button>
+      </div>
     </div>
 
-    <div id="aiStatus" class="ai-status">사진 촬영 시 상품명을 인식하고 쿠팡 검색을 자동으로 엽니다.</div>
+    <div id="aiStatus" class="ai-status">사진을 찍으면 상품명을 인식하고 쿠팡 검색을 열며, 가격 후보가 확인되면 판매가에 자동 입력합니다.</div>
+  </section>
+
+  <section class="card">
+    <h2 class="title">최근 검색·즐겨찾기</h2>
+    <div class="tab-row">
+      <button id="recentTab" class="tab-btn active" onclick="showHistoryTab('recent')">최근 검색</button>
+      <button id="favoriteTab" class="tab-btn secondary" onclick="showHistoryTab('favorite')">즐겨찾기</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+    <button class="secondary" type="button" onclick="clearCurrentHistory()" style="width:100%;margin-top:10px">현재 목록 비우기</button>
   </section>
 
   <section class="card">
@@ -382,132 +420,159 @@ function calc(){
 
 
 
-let latestCandidatePrice = 0;
+
+let latestCandidatePrice=0;
+let currentKeyword='';
+let currentHistoryTab='recent';
+let deferredInstallPrompt=null;
 
 function coupangSearchUrl(keyword){
-  return 'https://www.coupang.com/np/search?q=' + encodeURIComponent(keyword);
+  return 'https://www.coupang.com/np/search?q='+encodeURIComponent(keyword);
 }
-
 function openCoupangSearch(keyword){
-  window.open(coupangSearchUrl(keyword), '_blank');
+  currentKeyword=keyword;
+  window.open(coupangSearchUrl(keyword),'_blank');
+}
+function openCurrentCoupang(){
+  const k=currentKeyword||document.getElementById('recognizedName').value.trim();
+  if(k) openCoupangSearch(k);
+}
+function nowText(){
+  return new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function readList(key){
+  try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}
+}
+function writeList(key,list){localStorage.setItem(key,JSON.stringify(list));}
+function addRecent(keyword,price=0){
+  if(!keyword) return;
+  let list=readList('alldaypick_recent');
+  list=list.filter(x=>x.keyword!==keyword);
+  list.unshift({keyword,price:Number(price)||0,time:nowText()});
+  writeList('alldaypick_recent',list.slice(0,100));
+  renderHistory();
+}
+function favoriteCurrent(){
+  const keyword=currentKeyword||document.getElementById('recognizedName').value.trim();
+  if(!keyword) return;
+  let list=readList('alldaypick_favorites');
+  list=list.filter(x=>x.keyword!==keyword);
+  list.unshift({keyword,price:Number(document.getElementById('sale').value)||0,time:nowText()});
+  writeList('alldaypick_favorites',list.slice(0,100));
+  document.getElementById('aiStatus').textContent='즐겨찾기에 저장했습니다.';
+  renderHistory();
+}
+function showHistoryTab(tab){
+  currentHistoryTab=tab;
+  document.getElementById('recentTab').className='tab-btn '+(tab==='recent'?'active':'secondary');
+  document.getElementById('favoriteTab').className='tab-btn '+(tab==='favorite'?'active':'secondary');
+  renderHistory();
+}
+function renderHistory(){
+  const key=currentHistoryTab==='recent'?'alldaypick_recent':'alldaypick_favorites';
+  const list=readList(key);
+  const box=document.getElementById('historyList');
+  if(!box) return;
+  if(!list.length){box.innerHTML='<div class="empty">저장된 상품이 없습니다.</div>';return;}
+  box.innerHTML=list.map((x,i)=>`<div class="history-item">
+    <div onclick="reuseHistory('${encodeURIComponent(x.keyword)}',${Number(x.price)||0})">
+      <div class="history-name">${escapeHtml(x.keyword)}</div>
+      <div class="history-meta">${x.price?Number(x.price).toLocaleString('ko-KR')+'원 · ':''}${escapeHtml(x.time||'')}</div>
+    </div>
+    <div class="small-actions">
+      <button class="primary small-btn" onclick="reuseHistory('${encodeURIComponent(x.keyword)}',${Number(x.price)||0})">검색</button>
+      <button class="secondary small-btn" onclick="deleteHistoryItem('${key}',${i})">삭제</button>
+    </div>
+  </div>`).join('');
+}
+function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function reuseHistory(encoded,price){
+  const keyword=decodeURIComponent(encoded);
+  document.getElementById('recognizedName').value=keyword;
+  if(price){document.getElementById('sale').value=price;calc();}
+  openCoupangSearch(keyword);
+  findPriceCandidate(keyword);
+}
+function deleteHistoryItem(key,index){
+  const list=readList(key);list.splice(index,1);writeList(key,list);renderHistory();
+}
+function clearCurrentHistory(){
+  const key=currentHistoryTab==='recent'?'alldaypick_recent':'alldaypick_favorites';
+  if(confirm('현재 목록을 모두 비울까요?')){localStorage.removeItem(key);renderHistory();}
 }
 
 function searchManualProduct(){
   const input=document.getElementById('recognizedName');
   const keyword=input.value.trim();
   const status=document.getElementById('aiStatus');
-  if(!keyword){
-    status.textContent='상품명을 입력해 주세요.';
-    input.focus();
-    return;
-  }
-  status.textContent='쿠팡 검색을 열었습니다.';
+  if(!keyword){status.textContent='상품명을 입력해 주세요.';input.focus();return;}
+  addRecent(keyword);
+  status.textContent='쿠팡 검색을 열고 가격 후보를 확인합니다.';
   openCoupangSearch(keyword);
   findPriceCandidate(keyword);
 }
-
 function startVoiceInput(){
   const status=document.getElementById('aiStatus');
   const input=document.getElementById('recognizedName');
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-
-  if(!Recognition){
-    status.textContent='이 브라우저는 음성 인식을 지원하지 않습니다. 휴대폰 키보드 마이크를 이용해 주세요.';
-    input.focus();
-    return;
-  }
-
-  const recognition=new Recognition();
-  recognition.lang='ko-KR';
-  recognition.interimResults=false;
-  recognition.maxAlternatives=1;
-  status.textContent='상품명을 말씀해 주세요.';
-  recognition.start();
-
+  if(!Recognition){status.textContent='음성 인식을 지원하지 않습니다. 휴대폰 키보드 마이크를 이용해 주세요.';input.focus();return;}
+  const recognition=new Recognition();recognition.lang='ko-KR';recognition.interimResults=false;recognition.maxAlternatives=1;
+  status.textContent='상품명을 말씀해 주세요.';recognition.start();
   recognition.onresult=function(event){
-    const text=event.results[0][0].transcript.trim();
-    input.value=text;
-    status.textContent='음성 인식 완료. 쿠팡 검색을 엽니다.';
-    openCoupangSearch(text);
-    findPriceCandidate(text);
+    const text=event.results[0][0].transcript.trim();input.value=text;addRecent(text);
+    status.textContent='음성 인식 완료. 쿠팡 검색을 엽니다.';openCoupangSearch(text);findPriceCandidate(text);
   };
-
-  recognition.onerror=function(){
-    status.textContent='음성 인식에 실패했습니다. 다시 시도해 주세요.';
-  };
+  recognition.onerror=function(){status.textContent='음성 인식에 실패했습니다. 다시 시도해 주세요.';};
 }
-
 async function recognizeAndSearch(event){
-  const file=event.target.files&&event.target.files[0];
-  if(!file) return;
-
-  const preview=document.getElementById('aiPreview');
-  const status=document.getElementById('aiStatus');
-  const input=document.getElementById('recognizedName');
-
-  preview.src=URL.createObjectURL(file);
-  preview.style.display='block';
-  document.getElementById('priceCandidate').style.display='none';
-  latestCandidatePrice=0;
-  input.value='';
-  status.textContent='사진에서 상품명을 인식하고 있습니다.';
-
-  const form=new FormData();
-  form.append('image',file);
-
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  const preview=document.getElementById('aiPreview'),status=document.getElementById('aiStatus'),input=document.getElementById('recognizedName');
+  preview.src=URL.createObjectURL(file);preview.style.display='block';document.getElementById('priceCandidate').style.display='none';
+  latestCandidatePrice=0;input.value='';status.textContent='사진에서 상품명을 인식하고 있습니다.';
+  const form=new FormData();form.append('image',file);
   try{
-    const response=await fetch('/api/recognize',{method:'POST',body:form});
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.error||'상품 인식 실패');
-
-    const keyword=(data.search_query||data.product_name||'').trim();
-    if(!keyword) throw new Error('상품명을 읽지 못했습니다.');
-
-    input.value=keyword;
-    status.textContent='상품명 인식 완료. 쿠팡 검색을 자동으로 엽니다.';
-    openCoupangSearch(keyword);
-    findPriceCandidate(keyword);
-  }catch(err){
-    status.textContent='자동 인식 실패: '+err.message;
-  }
+    const response=await fetch('/api/recognize',{method:'POST',body:form});const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'상품 인식 실패');
+    const keyword=(data.search_query||data.product_name||'').trim();if(!keyword)throw new Error('상품명을 읽지 못했습니다.');
+    input.value=keyword;addRecent(keyword);status.textContent='상품명 인식 완료. 쿠팡 검색과 가격 확인을 시작합니다.';
+    openCoupangSearch(keyword);findPriceCandidate(keyword);
+  }catch(err){status.textContent='자동 인식 실패: '+err.message;}
 }
-
-async function findPriceCandidate(keyword){
-  const status=document.getElementById('aiStatus');
-  const box=document.getElementById('priceCandidate');
-  box.style.display='none';
-  latestCandidatePrice=0;
-
+async function scanBarcodePhoto(event){
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  const status=document.getElementById('aiStatus'),preview=document.getElementById('aiPreview');
+  preview.src=URL.createObjectURL(file);preview.style.display='block';
+  if(!('BarcodeDetector' in window)){status.textContent='이 브라우저는 바코드 자동 인식을 지원하지 않습니다. 제품 앞면 사진을 사용해 주세요.';return;}
   try{
-    const response=await fetch('/api/find-price',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:keyword})
-    });
+    status.textContent='바코드를 인식하고 있습니다.';
+    const bitmap=await createImageBitmap(file);
+    const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','itf']});
+    const codes=await detector.detect(bitmap);
+    if(!codes.length)throw new Error('바코드를 찾지 못했습니다.');
+    const code=codes[0].rawValue;document.getElementById('recognizedName').value=code;addRecent(code);
+    status.textContent='바코드 인식 완료. 쿠팡 검색을 엽니다.';openCoupangSearch(code);findPriceCandidate(code);
+  }catch(e){status.textContent='바코드 인식 실패: '+e.message+' 바코드가 크게 보이도록 다시 촬영해 주세요.';}
+}
+async function findPriceCandidate(keyword){
+  const status=document.getElementById('aiStatus'),box=document.getElementById('priceCandidate');box.style.display='none';latestCandidatePrice=0;
+  try{
+    const response=await fetch('/api/find-price',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:keyword})});
     const data=await response.json();
-
-    if(!response.ok || !data.price){
-      status.textContent='쿠팡 검색은 열었습니다. 자동 가격 확인은 실패했으니 실제 가격을 직접 입력해 주세요.';
-      return;
-    }
-
-    latestCandidatePrice=Number(data.price)||0;
+    if(!response.ok||!data.price){status.textContent='쿠팡 검색은 열었습니다. 가격 후보를 찾지 못해 실제 가격을 직접 입력해 주세요.';return;}
+    latestCandidatePrice=Number(data.price)||0;currentKeyword=keyword;
     document.getElementById('candidateTitle').textContent=data.title||keyword;
     document.getElementById('candidatePrice').textContent=Math.round(latestCandidatePrice).toLocaleString('ko-KR')+'원';
-    box.style.display='block';
-    status.textContent='가격 후보를 찾았습니다. 실제 상품 구성과 가격을 확인하세요.';
-  }catch(e){
-    status.textContent='쿠팡 검색은 열었습니다. 자동 가격 확인은 실패했습니다.';
-  }
+    document.getElementById('sale').value=Math.round(latestCandidatePrice);calc();
+    addRecent(keyword,latestCandidatePrice);box.style.display='block';
+    status.textContent='가격 후보를 쿠팡 판매가에 자동 입력했습니다. 실제 상품 구성과 가격을 확인하세요.';
+  }catch(e){status.textContent='쿠팡 검색은 열었습니다. 가격 자동 확인은 실패했습니다.';}
 }
-
 function applyCandidatePrice(){
-  if(!latestCandidatePrice) return;
-  document.getElementById('sale').value=Math.round(latestCandidatePrice);
-  calc();
-  document.getElementById('aiStatus').textContent='가격 후보를 쿠팡 판매가에 입력했습니다.';
+  if(!latestCandidatePrice)return;document.getElementById('sale').value=Math.round(latestCandidatePrice);calc();
 }
-
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;document.getElementById('installBar').style.display='flex';});
+async function installApp(){if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;document.getElementById('installBar').style.display='none';}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));}
 function saveDefaults(){
   const ids=['bundle','sale','unitCost','other','fee','tax','ship','target'];
   const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
@@ -540,6 +605,7 @@ function resetCalc(){
     }catch(e){}
   }
   calc();
+  renderHistory();
 })();
 </script>
 </body>
