@@ -105,8 +105,23 @@
   .legal{font-size:12px;color:#68717d;line-height:1.65}
   .usage-bar{height:10px;background:#e7ebef;border-radius:999px;overflow:hidden;margin-top:8px}
   .usage-fill{height:100%;background:#17365D;width:0}
+
+  .duplicate-alert{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#fff3cd;border:1px solid #ffe69c;color:#6b5200;font-size:13px;line-height:1.55;font-weight:800}
+  .cart-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+  .cart-box{background:#f3f6f9;border-radius:13px;padding:12px;text-align:center}
+  .cart-label{font-size:11px;color:#68717d;font-weight:800}
+  .cart-value{font-size:18px;font-weight:900;margin-top:4px}
+  .cart-item{border:1px solid #e4e8ed;border-radius:13px;padding:11px;margin-bottom:8px;background:#fafbfc}
+  .scanner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;padding:18px}
+  .scanner-box{max-width:520px;margin:0 auto;color:#fff;text-align:center}
+  .scanner-video{width:100%;max-height:68vh;object-fit:cover;border-radius:16px;background:#000}
+  .scanner-guide{margin:12px 0;font-size:14px;font-weight:800;line-height:1.5}
+  .scanner-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .shop-app-note{font-size:12px;color:#6d7480;line-height:1.5;margin-top:8px}
+
   @media(max-width:390px){ .grid2{grid-template-columns:1fr;} .profit{font-size:34px;} .top-summary{grid-template-columns:1fr;} }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -159,8 +174,7 @@
       <button class="primary" type="button" onclick="searchManualProduct()">상품명 검색</button>
       <button class="secondary ai-wide" type="button" onclick="document.getElementById('productPhoto').click()">사진 한 번 촬영 → 자동 검색·가격입력</button>
       <input id="productPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeAndSearch(event)">
-      <button class="secondary ai-wide" type="button" onclick="document.getElementById('barcodePhoto').click()">바코드 촬영 → 자동 검색</button>
-      <input id="barcodePhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="scanBarcodePhoto(event)">
+      <button class="secondary ai-wide" type="button" onclick="startWebBarcodeScanner()">바코드 실시간 스캔 → 자동 검색</button>
     </div>
     <div class="barcode-help">바코드는 휴대폰 브라우저 지원 여부에 따라 자동 인식이 안 될 수 있습니다. 그때는 제품 앞면 사진이나 음성검색을 사용하세요.</div>
 
@@ -178,6 +192,7 @@
     </div>
 
     <div id="aiStatus" class="ai-status">사진을 찍으면 상품명을 인식하고 쿠팡 검색을 열며, 가격 후보가 확인되면 판매가에 자동 입력합니다.</div>
+    <div id="duplicateAlert" class="duplicate-alert"></div>
   </section>
 
   <section class="card">
@@ -319,7 +334,7 @@
     <h2 class="title">현재 상품 저장·가격비교</h2>
     <div class="section-actions">
       <button class="primary" onclick="saveSourcingRecord()">소싱기록 저장</button>
-      <button class="secondary" onclick="addCurrentToInventory()">재고에 추가</button>
+      <button class="secondary" onclick="addCurrentToCart()">오늘 장바구니 담기</button>
     </div>
     <div class="market-grid">
       <button class="market-btn" onclick="openMarket('coupang')">쿠팡</button>
@@ -327,7 +342,22 @@
       <button class="market-btn" onclick="openMarket('11st')">11번가</button>
       <button class="market-btn" onclick="openMarket('gmarket')">G마켓</button>
     </div>
+    <div class="shop-app-note">안드로이드에서는 해당 쇼핑몰 앱이 설치되어 있으면 앱 실행을 우선 시도하고, 없으면 모바일 웹으로 연결합니다.</div>
     <label class="switch-line"><input id="rapidMode" type="checkbox"> 사진 인식 후 최근검색과 임시 소싱기록 자동 저장</label>
+  </section>
+
+  <section class="card">
+    <h2 class="title">오늘의 소싱 장바구니</h2>
+    <div class="cart-summary">
+      <div class="cart-box"><div class="cart-label">상품 수</div><div id="cartCount" class="cart-value">0개</div></div>
+      <div class="cart-box"><div class="cart-label">총 매입금액</div><div id="cartCost" class="cart-value">0원</div></div>
+      <div class="cart-box"><div class="cart-label">예상 순이익</div><div id="cartProfit" class="cart-value">0원</div></div>
+    </div>
+    <div class="section-actions">
+      <button class="secondary" onclick="exportCartXLSX()">장바구니 엑셀</button>
+      <button class="danger" onclick="clearTodayCart()">장바구니 비우기</button>
+    </div>
+    <div id="todayCartList" style="margin-top:12px"></div>
   </section>
   </main>
 
@@ -344,7 +374,7 @@
         <input id="recordSearch" type="text" placeholder="상품명 검색" oninput="renderSourcingRecords()">
       </div>
       <div class="section-actions">
-        <button class="secondary" onclick="exportSourcingCSV()">CSV 내보내기</button>
+        <button class="secondary" onclick="exportSourcingXLSX()">엑셀 내보내기</button>
         <button class="danger" onclick="clearData('alldaypick_sourcing_records','소싱기록')">전체 삭제</button>
       </div>
       <div id="sourcingRecordList" style="margin-top:12px"></div>
@@ -362,7 +392,7 @@
       </div>
       <button class="primary" style="width:100%" onclick="saveInventory()">재고 저장</button>
       <div class="section-actions">
-        <button class="secondary" onclick="exportInventoryCSV()">CSV 내보내기</button>
+        <button class="secondary" onclick="exportInventoryXLSX()">엑셀 내보내기</button>
         <button class="danger" onclick="clearData('alldaypick_inventory','재고')">전체 삭제</button>
       </div>
       <div id="inventoryList" style="margin-top:12px"></div>
@@ -382,7 +412,7 @@
       </div>
       <button class="primary" style="width:100%" onclick="saveSale()">판매기록 저장</button>
       <div class="section-actions">
-        <button class="secondary" onclick="exportSalesCSV()">CSV 내보내기</button>
+        <button class="secondary" onclick="exportSalesXLSX()">엑셀 내보내기</button>
         <button class="danger" onclick="clearData('alldaypick_sales','판매기록')">전체 삭제</button>
       </div>
       <div id="salesList" style="margin-top:12px"></div>
@@ -423,6 +453,18 @@
       </div>
     </section>
   </main>
+</div>
+
+<div id="scannerOverlay" class="scanner-overlay">
+  <div class="scanner-box">
+    <h2>바코드 실시간 스캔</h2>
+    <video id="scannerVideo" class="scanner-video" playsinline muted></video>
+    <div id="scannerMessage" class="scanner-guide">상품 바코드를 화면 중앙에 맞춰 주세요.</div>
+    <div class="scanner-actions">
+      <button class="secondary" onclick="manualBarcodeInput()">번호 직접 입력</button>
+      <button class="danger" onclick="stopWebBarcodeScanner()">닫기</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -568,12 +610,36 @@ let currentKeyword='';
 let currentHistoryTab='recent';
 let deferredInstallPrompt=null;
 
+function isAndroid(){
+  return /Android/i.test(navigator.userAgent);
+}
+function shopInfo(market,keyword){
+  const q=encodeURIComponent(keyword);
+  return {
+    coupang:{web:'https://www.coupang.com/np/search?q='+q,packageName:'com.coupang.mobile'},
+    naver:{web:'https://search.shopping.naver.com/search/all?query='+q,packageName:'com.navercorp.navershopping'},
+    '11st':{web:'https://search.11st.co.kr/Search.tmall?kwd='+q,packageName:'com.elevenst'},
+    gmarket:{web:'https://browse.gmarket.co.kr/search?keyword='+q,packageName:'com.ebay.kr.gmarket'}
+  }[market];
+}
+function openShopAppFirst(market,keyword){
+  const info=shopInfo(market,keyword);
+  if(!info)return;
+  currentKeyword=keyword;
+  if(isAndroid()){
+    const noScheme=info.web.replace(/^https?:\/\//,'');
+    const intent='intent://'+noScheme+'#Intent;scheme=https;package='+info.packageName+
+      ';S.browser_fallback_url='+encodeURIComponent(info.web)+';end';
+    window.location.href=intent;
+  }else{
+    window.open(info.web,'_blank');
+  }
+}
 function coupangSearchUrl(keyword){
-  return 'https://www.coupang.com/np/search?q='+encodeURIComponent(keyword);
+  return shopInfo('coupang',keyword).web;
 }
 function openCoupangSearch(keyword){
-  currentKeyword=keyword;
-  window.open(coupangSearchUrl(keyword),'_blank');
+  openShopAppFirst('coupang',keyword);
 }
 function openCurrentCoupang(){
   const k=currentKeyword||document.getElementById('recognizedName').value.trim();
@@ -586,6 +652,50 @@ function readList(key){
   try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}
 }
 function writeList(key,list){localStorage.setItem(key,JSON.stringify(list));}
+
+function normalizeProductName(name){
+  return String(name||'').toLowerCase().replace(/\s+/g,'').replace(/[()[\]{}\-_/.,]/g,'');
+}
+function findDuplicateProduct(keyword){
+  const target=normalizeProductName(keyword);
+  if(!target)return null;
+  const sourcing=readList('alldaypick_sourcing_records');
+  const recent=readList('alldaypick_recent');
+
+  const sourceHit=sourcing.find(x=>{
+    const n=normalizeProductName(x.name);
+    return n===target || (n.length>5 && target.length>5 && (n.includes(target)||target.includes(n)));
+  });
+  if(sourceHit)return {type:'소싱기록',item:sourceHit};
+
+  const recentHit=recent.find(x=>{
+    const n=normalizeProductName(x.keyword);
+    return n===target || (n.length>5 && target.length>5 && (n.includes(target)||target.includes(n)));
+  });
+  if(recentHit)return {type:'최근검색',item:recentHit};
+
+  return null;
+}
+function showDuplicateAlert(keyword){
+  const box=document.getElementById('duplicateAlert');
+  if(!box)return false;
+  const hit=findDuplicateProduct(keyword);
+  if(!hit){
+    box.style.display='none';
+    box.textContent='';
+    return false;
+  }
+  let text='이미 확인한 상품과 비슷합니다. ';
+  if(hit.type==='소싱기록'){
+    text+='지난 소싱가 '+won(hit.item.unitCost||0)+' · 지난 판매가 '+won(hit.item.sale||0)+' · 지난 순이익 '+won(hit.item.profit||0);
+  }else{
+    text+='최근 검색: '+(hit.item.keyword||'')+(hit.item.price?' · 확인 가격 '+won(hit.item.price):'');
+  }
+  box.textContent=text;
+  box.style.display='block';
+  return true;
+}
+
 function addRecent(keyword,price=0){
   if(!keyword) return;
   let list=readList('alldaypick_recent');
@@ -648,6 +758,7 @@ function searchManualProduct(){
   const keyword=input.value.trim();
   const status=document.getElementById('aiStatus');
   if(!keyword){status.textContent='상품명을 입력해 주세요.';input.focus();return;}
+  showDuplicateAlert(keyword);
   addRecent(keyword);
   status.textContent='쿠팡 검색을 열고 가격 후보를 확인합니다.';
   openCoupangSearch(keyword);
@@ -677,26 +788,90 @@ async function recognizeAndSearch(event){
     const response=await fetch('/api/recognize',{method:'POST',body:form});const data=await response.json();
     if(!response.ok)throw new Error(data.error||'상품 인식 실패');
     const keyword=(data.search_query||data.product_name||'').trim();if(!keyword)throw new Error('상품명을 읽지 못했습니다.');
-    input.value=keyword;addRecent(keyword);status.textContent='상품명 인식 완료. 쿠팡 검색과 가격 확인을 시작합니다.';
+    input.value=keyword;showDuplicateAlert(keyword);addRecent(keyword);status.textContent='상품명 인식 완료. 쿠팡 검색과 가격 확인을 시작합니다.';
     if(document.getElementById('rapidMode')&&document.getElementById('rapidMode').checked){saveSourcingRecord(true);}
     openCoupangSearch(keyword);findPriceCandidate(keyword);
   }catch(err){status.textContent='자동 인식 실패: '+err.message;}
 }
-async function scanBarcodePhoto(event){
-  const file=event.target.files&&event.target.files[0];if(!file)return;
-  const status=document.getElementById('aiStatus'),preview=document.getElementById('aiPreview');
-  preview.src=URL.createObjectURL(file);preview.style.display='block';
-  if(!('BarcodeDetector' in window)){status.textContent='이 브라우저는 바코드 자동 인식을 지원하지 않습니다. 제품 앞면 사진을 사용해 주세요.';return;}
+let barcodeStream=null;
+let barcodeScanTimer=null;
+
+async function startWebBarcodeScanner(){
+  const overlay=document.getElementById('scannerOverlay');
+  const video=document.getElementById('scannerVideo');
+  const message=document.getElementById('scannerMessage');
+  overlay.style.display='block';
+
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    message.textContent='이 브라우저에서는 카메라 스캔을 지원하지 않습니다.';
+    return;
+  }
+  if(!('BarcodeDetector' in window)){
+    message.textContent='이 브라우저는 자동 바코드 인식을 지원하지 않습니다. 번호 직접 입력을 이용해 주세요.';
+    return;
+  }
+
   try{
-    status.textContent='바코드를 인식하고 있습니다.';
-    const bitmap=await createImageBitmap(file);
+    barcodeStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
+      audio:false
+    });
+    video.srcObject=barcodeStream;
+    await video.play();
+
     const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','itf']});
-    const codes=await detector.detect(bitmap);
-    if(!codes.length)throw new Error('바코드를 찾지 못했습니다.');
-    const code=codes[0].rawValue;document.getElementById('recognizedName').value=code;addRecent(code);
-    status.textContent='바코드 인식 완료. 쿠팡 검색을 엽니다.';openCoupangSearch(code);findPriceCandidate(code);
-  }catch(e){status.textContent='바코드 인식 실패: '+e.message+' 바코드가 크게 보이도록 다시 촬영해 주세요.';}
+    message.textContent='상품 바코드를 화면 중앙에 맞춰 주세요.';
+
+    const scan=async()=>{
+      if(!barcodeStream)return;
+      try{
+        const codes=await detector.detect(video);
+        if(codes && codes.length){
+          const code=String(codes[0].rawValue||'').trim();
+          if(code){
+            stopWebBarcodeScanner();
+            document.getElementById('recognizedName').value=code;
+            showDuplicateAlert(code);
+            addRecent(code);
+            document.getElementById('aiStatus').textContent='바코드 인식 완료. 쿠팡 검색을 엽니다.';
+            openCoupangSearch(code);
+            findPriceCandidate(code);
+            return;
+          }
+        }
+      }catch(e){}
+      barcodeScanTimer=setTimeout(scan,350);
+    };
+    scan();
+  }catch(error){
+    message.textContent='카메라를 열지 못했습니다. 브라우저 카메라 권한을 확인해 주세요.';
+  }
 }
+
+function stopWebBarcodeScanner(){
+  if(barcodeScanTimer){clearTimeout(barcodeScanTimer);barcodeScanTimer=null;}
+  if(barcodeStream){
+    barcodeStream.getTracks().forEach(t=>t.stop());
+    barcodeStream=null;
+  }
+  const video=document.getElementById('scannerVideo');
+  if(video)video.srcObject=null;
+  document.getElementById('scannerOverlay').style.display='none';
+}
+
+function manualBarcodeInput(){
+  const code=prompt('바코드 번호를 입력하세요.');
+  if(!code)return;
+  stopWebBarcodeScanner();
+  const value=String(code).trim();
+  document.getElementById('recognizedName').value=value;
+  showDuplicateAlert(value);
+  addRecent(value);
+  document.getElementById('aiStatus').textContent='바코드 번호 입력 완료. 쿠팡 검색을 엽니다.';
+  openCoupangSearch(value);
+  findPriceCandidate(value);
+}
+
 async function findPriceCandidate(keyword){
   const status=document.getElementById('aiStatus'),box=document.getElementById('priceCandidate');box.style.display='none';latestCandidatePrice=0;
   try{
@@ -876,13 +1051,44 @@ function renderDashboard(){
 function openMarket(market){
   const q=(document.getElementById('recognizedName').value||'').trim();
   if(!q){alert('상품명을 먼저 입력하세요.');return;}
-  const urls={
-    coupang:'https://www.coupang.com/np/search?q=',
-    naver:'https://search.shopping.naver.com/search/all?query=',
-    '11st':'https://search.11st.co.kr/Search.tmall?kwd=',
-    gmarket:'https://browse.gmarket.co.kr/search?keyword='
-  };
-  window.open(urls[market]+encodeURIComponent(q),'_blank');
+  openShopAppFirst(market,q);
+}
+
+
+function ensureXLSX(){
+  if(typeof XLSX==='undefined'){
+    alert('엑셀 모듈을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');
+    return false;
+  }
+  return true;
+}
+function downloadWorkbook(filename,sheetName,rows){
+  if(!ensureXLSX())return;
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,filename);
+}
+function exportSourcingXLSX(){
+  const list=readList('alldaypick_sourcing_records');
+  downloadWorkbook('소싱기록.xlsx','소싱기록',[
+    ['일시','상품명','묶음','판매가','개당소싱가','총소싱가','순이익','마진율'],
+    ...list.map(x=>[x.date,x.name,x.bundle,x.sale,x.unitCost,x.totalCost,Math.round(x.profit),Number(x.margin).toFixed(2)+'%'])
+  ]);
+}
+function exportInventoryXLSX(){
+  const list=readList('alldaypick_inventory');
+  downloadWorkbook('재고.xlsx','재고',[
+    ['상품명','재고','개당원가','안전재고','재고금액'],
+    ...list.map(x=>[x.name,x.qty,x.cost,x.min,x.qty*x.cost])
+  ]);
+}
+function exportSalesXLSX(){
+  const list=readList('alldaypick_sales');
+  downloadWorkbook('판매기록.xlsx','판매기록',[
+    ['일시','상품명','수량','매출','매입원가','수수료','배송기타','순이익'],
+    ...list.map(x=>[x.date,x.name,x.qty,x.revenue,x.cost,x.fee,x.expense,x.profit])
+  ]);
 }
 
 function csvDownload(filename,rows){
@@ -930,6 +1136,101 @@ function restoreAllData(event){
   reader.readAsText(file);
 }
 
+
+function getTodayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function readTodayCart(){
+  return readList('alldaypick_today_cart_'+getTodayKey());
+}
+function writeTodayCart(list){
+  writeList('alldaypick_today_cart_'+getTodayKey(),list);
+}
+function addCurrentToCart(){
+  const d=currentCalcData();
+  if(!d.name || d.name==='상품명 미입력'){
+    alert('상품명을 먼저 입력하세요.');
+    return;
+  }
+
+  const quantity=Number(prompt('구매할 수량을 입력하세요.','1')||0);
+  if(quantity<=0)return;
+
+  let list=readTodayCart();
+  const same=list.find(x=>normalizeProductName(x.name)===normalizeProductName(d.name));
+
+  if(same){
+    if(!confirm('이미 장바구니에 있는 상품입니다. 수량을 추가할까요?'))return;
+    same.buyQty=Number(same.buyQty||0)+quantity;
+  }else{
+    list.unshift({...d,buyQty:quantity,cartId:Date.now()});
+  }
+
+  writeTodayCart(list);
+  renderTodayCart();
+  alert('오늘의 소싱 장바구니에 담았습니다.');
+}
+function removeCartItem(cartId){
+  writeTodayCart(readTodayCart().filter(x=>x.cartId!==cartId));
+  renderTodayCart();
+}
+function changeCartQty(cartId,delta){
+  const list=readTodayCart().map(x=>{
+    if(x.cartId===cartId)x.buyQty=Math.max(1,Number(x.buyQty||1)+delta);
+    return x;
+  });
+  writeTodayCart(list);
+  renderTodayCart();
+}
+function renderTodayCart(){
+  const list=readTodayCart();
+  const box=document.getElementById('todayCartList');
+  if(!box)return;
+
+  const totalCost=list.reduce((s,x)=>s+Number(x.unitCost||0)*Number(x.buyQty||0),0);
+  const totalProfit=list.reduce((s,x)=>s+Number(x.profit||0)*Number(x.buyQty||0),0);
+
+  document.getElementById('cartCount').textContent=list.length+'개';
+  document.getElementById('cartCost').textContent=won(totalCost);
+  document.getElementById('cartProfit').textContent=won(totalProfit);
+
+  if(!list.length){
+    box.innerHTML='<div class="empty">오늘 장바구니가 비어 있습니다.</div>';
+    return;
+  }
+
+  box.innerHTML=list.map(x=>`<div class="cart-item">
+    <div class="cart-item-title">${escapeHtml(x.name)}</div>
+    <div class="cart-item-meta">
+      구매 ${x.buyQty}개 · 개당 소싱가 ${won(x.unitCost)}<br>
+      매입 ${won(x.unitCost*x.buyQty)} · 예상 순이익 ${won(x.profit*x.buyQty)}
+    </div>
+    <div class="small-actions" style="margin-top:8px">
+      <button class="secondary small-btn" onclick="changeCartQty(${x.cartId},1)">+1</button>
+      <button class="secondary small-btn" onclick="changeCartQty(${x.cartId},-1)">-1</button>
+      <button class="danger small-btn" onclick="removeCartItem(${x.cartId})">삭제</button>
+    </div>
+  </div>`).join('');
+}
+function clearTodayCart(){
+  if(confirm('오늘의 소싱 장바구니를 비울까요?')){
+    localStorage.removeItem('alldaypick_today_cart_'+getTodayKey());
+    renderTodayCart();
+  }
+}
+function exportCartXLSX(){
+  const list=readTodayCart();
+  downloadWorkbook('오늘의_소싱장바구니_'+getTodayKey()+'.xlsx','장바구니',[
+    ['상품명','구매수량','개당소싱가','총매입금액','쿠팡판매가','주문당순이익','예상총순이익','마진율'],
+    ...list.map(x=>[
+      x.name,x.buyQty,x.unitCost,x.unitCost*x.buyQty,x.sale,
+      Math.round(x.profit),Math.round(x.profit*x.buyQty),Number(x.margin).toFixed(2)+'%'
+    ])
+  ]);
+}
+
+
 function saveDefaults(){
   const ids=['bundle','sale','unitCost','other','fee','tax','ship','target'];
   const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
@@ -967,6 +1268,7 @@ function resetCalc(){
   renderInventory();
   renderSales();
   renderDashboard();
+  renderTodayCart();
 })();
 </script>
 </body>
