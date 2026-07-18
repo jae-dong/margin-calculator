@@ -55,7 +55,7 @@ def sneaker():
 @app.post('/api/recognize-kream-captures')
 def kream_captures():
     try:
-        prompt='''여러 장의 KREAM 화면 캡처를 하나의 묶음으로 분석한다. 보통 한 장은 체결 거래 내역, 다른 한 장은 판매입찰 또는 구매입찰 화면이다. 모든 사진에서 같은 상품과 같은 사이즈의 정보를 합쳐라. 실제 화면에 보이는 값만 사용하고 추측하지 않는다. 사이즈는 한국/JP mm를 우선한다. 날짜는 YYYY-MM-DD로 변환한다. 중복 거래는 제거하고 최신순 최대 10건을 반환한다. 판매입찰 화면의 최저 판매희망가는 lowest_ask, 구매입찰 화면의 최고 구매희망가는 highest_bid에 넣는다. 최근 거래가는 가장 최신 체결가이다. 화면에 보이는 체결 거래 개수도 visible_trade_count에 넣는다. JSON 하나만 반환: {"model_no":"","product_name":"","size":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"capture_types":["체결거래","판매입찰","구매입찰"],"confidence":"높음|보통|낮음"}'''
+        prompt='''여러 장의 KREAM 화면 캡처를 하나의 묶음으로 분석한다. 핵심은 같은 상품·같은 사이즈의 체결 거래 내역이다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다. 사이즈는 한국/JP mm를 우선한다. 날짜는 YYYY-MM-DD로 변환한다. 중복 거래는 제거하고 최신순 최대 10건을 반환한다. 판매입찰이나 구매입찰 화면이 함께 있어도 참고정보로만 구분하고, 일반판매 수익 계산에 사용할 가격은 trades의 실제 체결 거래가다. 최근 거래가는 가장 최신 체결가이다. 화면에 보이는 체결 거래 개수도 visible_trade_count에 넣는다. JSON 하나만 반환: {"model_no":"","product_name":"","size":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"capture_types":["체결거래","판매입찰","구매입찰"],"confidence":"높음|보통|낮음"}'''
         d,e=vision(prompt,1600,multiple=True)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
     except Exception as x:return jsonify(error=f'KREAM 다중 캡처 인식 오류: {x}'),502
