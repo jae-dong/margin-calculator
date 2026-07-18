@@ -43,6 +43,32 @@ def _model_score(code, brand=''):
     if re.search(r'\d{5,}$',c) and len(c)>11: score-=45
     return score
 
+
+WATERMARK_WORDS = ('올데이픽', 'ALLDAYPICK', 'ALL DAY PICK', 'AI 소싱계산기', 'AI소싱계산기')
+
+def _remove_watermark_text(v):
+    text=str(v or '')
+    for word in WATERMARK_WORDS:
+        text=re.sub(re.escape(word), ' ', text, flags=re.I)
+    return re.sub(r'\s+', ' ', text).strip(' -_·|/')
+
+def normalize_general_result(d):
+    d=dict(d or {})
+    text_fields=('brand','product_name','variant','product_code','manufacturer','origin','volume','color','promotion','coupang_query','fallback_query')
+    for key in text_fields:
+        d[key]=_remove_watermark_text(d.get(key))
+    for key in ('design_features','visible_text','warnings'):
+        vals=d.get(key) or []
+        d[key]=[x for x in (_remove_watermark_text(v) for v in vals) if x]
+    # 정상적인 숫자형 바코드만 유지한다. 앱 워터마크나 상품명이 섞인 값은 제거한다.
+    raw=str(d.get('barcode') or '')
+    digits=re.sub(r'\D','',raw)
+    d['barcode']=digits if 8 <= len(digits) <= 14 else ''
+    # 검색어에도 워터마크가 남지 않도록 마지막으로 한 번 더 정리한다.
+    d['coupang_query']=_remove_watermark_text(d.get('coupang_query'))
+    d['fallback_query']=d['barcode'] or _remove_watermark_text(d.get('fallback_query'))
+    return d
+
 def normalize_sneaker_result(d):
     d=dict(d or {})
     candidates=[]
@@ -75,7 +101,9 @@ def vision(prompt,tokens=500,multiple=False):
 def home():return send_from_directory('.','index.html')
 @app.get('/<path:p>')
 def static_file(p):return send_from_directory('.',p)
-GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다. 상품 본체, 포장 앞면/뒷면, 가격표, 신발 박스 라벨 중 하나일 수 있다. 사진에 실제로 보이는 정보만 사용하고 추측하지 않는다.
+GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다.
+
+중요: 사진에 앱이 자동으로 넣은 워터마크, 촬영앱 이름, 화면 상단·하단의 UI 글자는 상품 정보가 아니다. 특히 '올데이픽', 'ALLDAYPICK', 'ALL DAY PICK', 'AI 소싱계산기' 문구는 brand, product_name, variant, visible_text, design_features, coupang_query 등 모든 결과에서 완전히 제외한다. 워터마크와 실제 포장 인쇄를 혼동하지 않는다. 상품 본체, 포장 앞면/뒷면, 가격표, 신발 박스 라벨 중 하나일 수 있다. 사진에 실제로 보이는 정보만 사용하고 추측하지 않는다.
 
 반드시 확인할 항목:
 1. 브랜드와 정확한 상품명. 포장에 적힌 핵심 제품명, 라인명, 맛/향/색상/종류를 분리한다.
@@ -95,13 +123,13 @@ GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다
 def product():
     try:
         d,e=vision(GENERAL_PRODUCT_PROMPT,1200)
-        return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
+        return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'상품 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-price-tag')
 def price():
     try:
         d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',1200)
-        return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
+        return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'가격표 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-receipt')
 def receipt():
