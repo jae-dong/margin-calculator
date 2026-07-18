@@ -206,6 +206,55 @@ def recognize_price_tag():
         return jsonify(error=f"가격표 인식 오류: {exc}"), 502
 
 
+
+@app.post("/api/recognize-sneaker-label")
+def recognize_sneaker_label():
+    image = request.files.get("image")
+    if image is None:
+        return jsonify(error="사진 파일이 없습니다."), 400
+
+    mime = image.mimetype or "image/jpeg"
+    if mime not in ALLOWED_TYPES:
+        return jsonify(error="JPG, PNG, WEBP만 지원합니다."), 400
+
+    raw = image.read()
+    data_url = f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+
+    prompt = """
+신발 박스 라벨 또는 신발 택 사진을 분석하라.
+대상 브랜드는 나이키, 뉴발란스, 아디다스, 언더아머 중심이다.
+사진에 실제로 보이는 정보만 사용하고 추측하지 마라.
+모델번호 또는 스타일코드는 문자·숫자·하이픈을 정확히 유지하라.
+사이즈는 한국/JP 기준 mm 숫자를 우선 반환하라.
+반드시 JSON 하나만 반환:
+{
+  "brand":"나이키|뉴발란스|아디다스|언더아머|기타",
+  "model_no":"",
+  "product_name":"",
+  "size":0,
+  "color":"",
+  "barcode":"",
+  "confidence":"높음|보통|낮음"
+}
+"""
+
+    try:
+        response = get_client().responses.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            input=[{
+                "role":"user",
+                "content":[
+                    {"type":"input_text","text":prompt},
+                    {"type":"input_image","image_url":data_url}
+                ]
+            }],
+            max_output_tokens=450
+        )
+        return jsonify(parse_json(response.output_text))
+    except Exception as exc:
+        return jsonify(error=f"신발 라벨 인식 오류: {exc}"), 502
+
+
 @app.errorhandler(404)
 def not_found(_):
     return send_from_directory(BASE_DIR, "index.html")

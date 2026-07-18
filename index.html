@@ -140,6 +140,22 @@
   .report-value{font-size:20px;font-weight:900;margin-top:5px}
   .resourcing-alert{display:none;margin-top:10px;padding:12px;border-radius:14px;background:#e7f5ff;border:1px solid #a5d8ff;color:#0b4f6c;font-size:13px;line-height:1.55;font-weight:800}
 
+
+  .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .mode-btn{padding:13px;border-radius:14px;border:1px solid #d8dde3;background:#fff;font-weight:900}
+  .mode-btn.active{background:#17365D;color:#fff;border-color:#17365D}
+  .sneaker-card{background:#fff;border-radius:18px;padding:18px;margin-top:14px;box-shadow:0 8px 22px rgba(0,0,0,.09)}
+  .sneaker-result{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .sneaker-result-box{background:#f3f6f9;border-radius:14px;padding:13px}
+  .sneaker-result-label{font-size:11px;color:#68717d;font-weight:800}
+  .sneaker-result-value{font-size:20px;font-weight:900;margin-top:5px}
+  .decision-box{margin-top:12px;padding:16px;border-radius:16px;font-weight:900;line-height:1.55;text-align:center}
+  .decision-buy{background:#eaf7ef;color:#176b28;border:1px solid #b7e1c2}
+  .decision-review{background:#fff4e5;color:#8a4b00;border:1px solid #ffd8a8}
+  .decision-stop{background:#fff0f0;color:#a31515;border:1px solid #ffc9c9}
+  .sneaker-history-item{border:1px solid #e4e8ed;border-radius:13px;padding:11px;margin-bottom:8px;background:#fafbfc}
+  .kream-note{font-size:12px;line-height:1.55;color:#68717d;margin-top:8px}
+
   @media(max-width:390px){ .grid2{grid-template-columns:1fr;} .profit{font-size:34px;} .top-summary{grid-template-columns:1fr;} }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -453,6 +469,75 @@
     </div>
     <div id="todayCartList" style="margin-top:12px"></div>
   </section>
+  </div>
+
+  <div id="sneakerSourcingWrap" style="display:none">
+    <section class="sneaker-card">
+      <h2 class="title">스니커즈 라벨·상품번호 인식</h2>
+      <div class="feature-grid">
+        <button class="secondary" onclick="document.getElementById('sneakerLabelPhoto').click()">박스 라벨 촬영</button>
+        <button class="secondary" onclick="document.getElementById('sneakerPricePhoto').click()">아울렛 가격표 촬영</button>
+        <input id="sneakerLabelPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeSneakerLabel(event)">
+        <input id="sneakerPricePhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="recognizeSneakerPrice(event)">
+      </div>
+      <div id="sneakerAIStatus" class="ai-status">박스 라벨이나 상품번호를 촬영하면 브랜드·모델번호·사이즈를 인식합니다.</div>
+    </section>
+
+    <section class="sneaker-card">
+      <h2 class="title">제품 정보</h2>
+      <div class="grid2">
+        <div class="field"><label for="sBrand">브랜드</label><select id="sBrand"><option>나이키</option><option>뉴발란스</option><option>아디다스</option><option>언더아머</option><option>기타</option></select></div>
+        <div class="field"><label for="sModelNo">모델번호</label><input id="sModelNo" type="text" placeholder="예: U9060GRY" oninput="checkSneakerDuplicate()"></div>
+        <div class="field"><label for="sSize">사이즈</label><input id="sSize" type="number" inputmode="numeric" placeholder="예: 250" oninput="calcSneaker()"></div>
+        <div class="field"><label for="sStore">아울렛/매장</label><input id="sStore" type="text" placeholder="예: 기흥 나이키"></div>
+      </div>
+      <div id="sneakerDuplicate" class="duplicate-alert"></div>
+      <button class="primary" style="width:100%;margin-top:10px" onclick="openKreamSearch()">KREAM에서 모델번호 검색</button>
+      <div class="kream-note">KREAM에서 해당 사이즈 가격을 확인해 아래에 입력하면 자동으로 사입 여부를 판정합니다.</div>
+    </section>
+
+    <section class="sneaker-card">
+      <h2 class="title">아울렛 구매가·KREAM 가격</h2>
+      <div class="grid2">
+        <div class="field"><label for="sBuyPrice">아울렛 구매가</label><input id="sBuyPrice" type="number" inputmode="numeric" value="117000" oninput="calcSneaker()"></div>
+        <div class="field"><label for="sInstantPrice">KREAM 즉시판매 기준가</label><input id="sInstantPrice" type="number" inputmode="numeric" placeholder="최고 구매입찰가" oninput="calcSneaker()"></div>
+        <div class="field"><label for="sAskPrice">KREAM 일반판매 기준가</label><input id="sAskPrice" type="number" inputmode="numeric" placeholder="최저 판매희망가" oninput="calcSneaker()"></div>
+        <div class="field"><label for="sRecentPrice">최근 거래가</label><input id="sRecentPrice" type="number" inputmode="numeric" placeholder="최근 체결가"></div>
+      </div>
+    </section>
+
+    <section class="sneaker-card">
+      <h2 class="title">정산 설정</h2>
+      <div class="grid2">
+        <div class="field"><label for="sFeeRate">판매 수수료율</label><div class="input-wrap"><input id="sFeeRate" type="number" step="0.1" value="7.0" oninput="calcSneaker()"><span class="unit">%</span></div></div>
+        <div class="field"><label for="sSellerShip">판매자 배송비</label><div class="input-wrap"><input id="sSellerShip" type="number" value="3000" oninput="calcSneaker()"><span class="unit">원</span></div></div>
+        <div class="field"><label for="sOtherCost">기타비용</label><div class="input-wrap"><input id="sOtherCost" type="number" value="0" oninput="calcSneaker()"><span class="unit">원</span></div></div>
+        <div class="field"><label for="sTargetProfit">최소 목표 순이익</label><div class="input-wrap"><input id="sTargetProfit" type="number" value="30000" oninput="calcSneaker()"><span class="unit">원</span></div></div>
+        <div class="field"><label for="sTargetMargin">최소 목표 마진율</label><div class="input-wrap"><input id="sTargetMargin" type="number" step="0.1" value="15" oninput="calcSneaker()"><span class="unit">%</span></div></div>
+        <div class="field"><label for="sDemand">사이즈 수요</label><select id="sDemand" onchange="calcSneaker()"><option>보통</option><option>높음</option><option>낮음</option><option>거래없음</option></select></div>
+      </div>
+    </section>
+
+    <section class="sneaker-card">
+      <h2 class="title">사입 판정</h2>
+      <div class="sneaker-result">
+        <div class="sneaker-result-box"><div class="sneaker-result-label">즉시판매 순이익</div><div id="sInstantProfit" class="sneaker-result-value">0원</div></div>
+        <div class="sneaker-result-box"><div class="sneaker-result-label">즉시판매 마진율</div><div id="sInstantMargin" class="sneaker-result-value">0%</div></div>
+        <div class="sneaker-result-box"><div class="sneaker-result-label">일반판매 순이익</div><div id="sAskProfit" class="sneaker-result-value">0원</div></div>
+        <div class="sneaker-result-box"><div class="sneaker-result-label">일반판매 마진율</div><div id="sAskMargin" class="sneaker-result-value">0%</div></div>
+      </div>
+      <div id="sneakerDecision" class="decision-box decision-review">가격을 입력하면 사입 여부를 판정합니다.</div>
+      <div class="section-actions" style="margin-top:12px">
+        <button class="primary" onclick="saveSneakerRecord()">스니커즈 기록 저장</button>
+        <button class="secondary" onclick="addSneakerToCart()">오늘 장바구니 담기</button>
+      </div>
+    </section>
+
+    <section class="sneaker-card">
+      <h2 class="title">최근 스니커즈 소싱기록</h2>
+      <div id="sneakerHistoryList"></div>
+    </section>
+  </div>
   </main>
 
   <main id="pageRecords" class="page">
@@ -1648,6 +1733,105 @@ function exportMonthlyReportXLSX(){
 }
 
 
+
+function switchSourcingMode(mode){
+  const general=mode==='general';
+  document.getElementById('generalSourcingWrap').style.display=general?'block':'none';
+  document.getElementById('sneakerSourcingWrap').style.display=general?'none':'block';
+  document.getElementById('generalModeBtn').className='mode-btn '+(general?'active':'');
+  document.getElementById('sneakerModeBtn').className='mode-btn '+(!general?'active':'');
+  if(!general){calcSneaker();renderSneakerHistory();}
+}
+async function recognizeSneakerLabel(event){
+  const file=event.target.files&&event.target.files[0]; if(!file)return;
+  const status=document.getElementById('sneakerAIStatus'); status.textContent='신발 박스 라벨을 분석하고 있습니다.';
+  try{
+    const data=await uploadDocumentImage(file,'/api/recognize-sneaker-label');
+    if(data.brand)document.getElementById('sBrand').value=data.brand;
+    if(data.model_no)document.getElementById('sModelNo').value=data.model_no;
+    if(data.size)document.getElementById('sSize').value=data.size;
+    status.textContent='인식 완료: '+[data.brand,data.model_no,data.size?data.size+' 사이즈':''].filter(Boolean).join(' · ');
+    checkSneakerDuplicate(); calcSneaker();
+  }catch(e){status.textContent='라벨 인식 실패: '+e.message;}
+}
+async function recognizeSneakerPrice(event){
+  const file=event.target.files&&event.target.files[0]; if(!file)return;
+  const status=document.getElementById('sneakerAIStatus'); status.textContent='아울렛 가격표를 분석하고 있습니다.';
+  try{
+    const data=await uploadDocumentImage(file,'/api/recognize-price-tag');
+    if(data.price)document.getElementById('sBuyPrice').value=data.price;
+    status.textContent='가격표 인식 완료: '+won(Number(data.price||0));
+    calcSneaker();
+  }catch(e){status.textContent='가격표 인식 실패: '+e.message;}
+}
+function openKreamSearch(){
+  const model=(document.getElementById('sModelNo').value||'').trim();
+  if(!model){alert('모델번호를 먼저 입력하세요.');return;}
+  window.open('https://kream.co.kr/search?keyword='+encodeURIComponent(model),'_blank');
+}
+function sneakerProfit(price){
+  const sale=Number(price||0), buy=Number(document.getElementById('sBuyPrice').value||0);
+  const fee=sale*Number(document.getElementById('sFeeRate').value||0)/100;
+  const ship=Number(document.getElementById('sSellerShip').value||0), other=Number(document.getElementById('sOtherCost').value||0);
+  const profit=sale-buy-fee-ship-other, margin=sale>0?profit/sale*100:0;
+  return {sale,buy,fee,ship,other,profit,margin};
+}
+function calcSneaker(){
+  const instant=sneakerProfit(document.getElementById('sInstantPrice').value);
+  const ask=sneakerProfit(document.getElementById('sAskPrice').value);
+  document.getElementById('sInstantProfit').textContent=won(instant.profit);
+  document.getElementById('sInstantMargin').textContent=instant.margin.toFixed(1)+'%';
+  document.getElementById('sAskProfit').textContent=won(ask.profit);
+  document.getElementById('sAskMargin').textContent=ask.margin.toFixed(1)+'%';
+  const targetProfit=Number(document.getElementById('sTargetProfit').value||0);
+  const targetMargin=Number(document.getElementById('sTargetMargin').value||0);
+  const demand=document.getElementById('sDemand').value;
+  const decision=document.getElementById('sneakerDecision');
+  const basis=instant.sale>0?instant:ask;
+  if(!basis.sale){decision.className='decision-box decision-review';decision.textContent='KREAM 가격을 입력하면 사입 여부를 판정합니다.';return;}
+  if(demand==='거래없음'||demand==='낮음'){decision.className='decision-box decision-stop';decision.textContent='사입 주의 또는 금지 · 해당 사이즈 수요가 낮습니다.';}
+  else if(basis.profit>=targetProfit&&basis.margin>=targetMargin){decision.className='decision-box decision-buy';decision.textContent='사입 추천 · 순이익 '+won(basis.profit)+' · 마진율 '+basis.margin.toFixed(1)+'%';}
+  else if(basis.profit>0&&basis.margin>=8){decision.className='decision-box decision-review';decision.textContent='재검토 · 목표 기준에 부족합니다. 순이익 '+won(basis.profit)+' · 마진율 '+basis.margin.toFixed(1)+'%';}
+  else{decision.className='decision-box decision-stop';decision.textContent='사입 금지 · 예상 순이익 또는 마진율이 너무 낮습니다.';}
+}
+function sneakerRecordData(){
+  const instant=sneakerProfit(document.getElementById('sInstantPrice').value), ask=sneakerProfit(document.getElementById('sAskPrice').value);
+  return {id:Date.now(),date:new Date().toISOString(),brand:document.getElementById('sBrand').value,
+    modelNo:(document.getElementById('sModelNo').value||'').trim(),size:Number(document.getElementById('sSize').value||0),
+    store:(document.getElementById('sStore').value||'').trim(),buyPrice:Number(document.getElementById('sBuyPrice').value||0),
+    instantPrice:Number(document.getElementById('sInstantPrice').value||0),askPrice:Number(document.getElementById('sAskPrice').value||0),
+    recentPrice:Number(document.getElementById('sRecentPrice').value||0),instantProfit:instant.profit,instantMargin:instant.margin,
+    askProfit:ask.profit,askMargin:ask.margin,demand:document.getElementById('sDemand').value};
+}
+function saveSneakerRecord(){
+  const data=sneakerRecordData(); if(!data.modelNo){alert('모델번호를 입력하세요.');return;}
+  let list=readList('alldaypick_sneaker_records'); list.unshift(data); writeList('alldaypick_sneaker_records',list.slice(0,2000));
+  renderSneakerHistory(); alert('스니커즈 소싱기록을 저장했습니다.');
+}
+function addSneakerToCart(){
+  const data=sneakerRecordData(); if(!data.modelNo){alert('모델번호를 입력하세요.');return;}
+  const qty=Number(prompt('구매 수량을 입력하세요.','1')||0); if(qty<=0)return;
+  let list=readTodayCart(); list.unshift({name:data.brand+' '+data.modelNo+' '+data.size,unitCost:data.buyPrice,
+    sale:data.instantPrice||data.askPrice,profit:data.instantPrice?data.instantProfit:data.askProfit,
+    margin:data.instantPrice?data.instantMargin:data.askMargin,buyQty:qty,cartId:Date.now()});
+  writeTodayCart(list);renderTodayCart();alert('오늘 장바구니에 담았습니다.');
+}
+function checkSneakerDuplicate(){
+  const model=normalizeProductName(document.getElementById('sModelNo').value), size=Number(document.getElementById('sSize').value||0);
+  const box=document.getElementById('sneakerDuplicate'); if(!model){box.style.display='none';return;}
+  const hit=readList('alldaypick_sneaker_records').find(x=>normalizeProductName(x.modelNo)===model&&(!size||Number(x.size)===size));
+  if(!hit){box.style.display='none';box.textContent='';return;}
+  box.style.display='block';box.textContent='이전에 확인한 제품입니다. 지난 구매가 '+won(hit.buyPrice)+' · 즉시판매 순이익 '+won(hit.instantProfit);
+}
+function renderSneakerHistory(){
+  const box=document.getElementById('sneakerHistoryList'); if(!box)return;
+  const list=readList('alldaypick_sneaker_records').slice(0,30);
+  if(!list.length){box.innerHTML='<div class="empty">저장된 스니커즈 소싱기록이 없습니다.</div>';return;}
+  box.innerHTML=list.map(x=>`<div class="sneaker-history-item"><div class="record-title">${escapeHtml(x.brand)} ${escapeHtml(x.modelNo)} ${x.size||''}</div>
+  <div class="record-meta">${new Date(x.date).toLocaleString('ko-KR')} · ${escapeHtml(x.store||'매장 미입력')}<br>
+  구매가 ${won(x.buyPrice)} · 즉시판매 ${won(x.instantPrice)} · 예상 순이익 ${won(x.instantProfit)} · 마진 ${Number(x.instantMargin).toFixed(1)}%</div></div>`).join('');
+}
+
 function saveDefaults(){
   const ids=['bundle','sale','unitCost','other','fee','tax','ship','target'];
   const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
@@ -1690,6 +1874,7 @@ function resetCalc(){
   renderTop10('profit');
   renderFailedProducts();
   renderMonthlyReport();
+  renderSneakerHistory();
 })();
 </script>
 </body>
