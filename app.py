@@ -39,7 +39,7 @@ def _model_score(code, brand=''):
     if 7<=len(c)<=10: score+=15
     if '-' in c: score+=3
     # 라벨 내부관리번호/바코드 계열로 자주 보이는 패턴 감점
-    if c.startswith(('NBPDFS','EAN','UPC','SKU')): score-=55
+    if c.startswith(('NBPDFS','NBP','EAN','UPC','SKU')): score-=120
     if re.search(r'\d{5,}$',c) and len(c)>11: score-=45
     return score
 
@@ -52,21 +52,53 @@ def _remove_watermark_text(v):
         text=re.sub(re.escape(word), ' ', text, flags=re.I)
     return re.sub(r'\s+', ' ', text).strip(' -_·|/')
 
+def _pick_best_model(candidates, brand=''):
+    cleaned=[]
+    for x in candidates:
+        c=_clean_code(x)
+        if c and c not in cleaned:
+            cleaned.append(c)
+    ranked=sorted(((_model_score(x,brand), x) for x in cleaned), reverse=True)
+    return ranked[0][1] if ranked and ranked[0][0] >= 70 else ''
+
 def normalize_general_result(d):
     d=dict(d or {})
-    text_fields=('brand','product_name','variant','product_code','manufacturer','origin','volume','color','promotion','coupang_query','fallback_query')
+    text_fields=('brand','product_name','variant','product_code','manufacturer','origin','volume','color','promotion','coupang_query','fallback_query','internal_code')
     for key in text_fields:
         d[key]=_remove_watermark_text(d.get(key))
     for key in ('design_features','visible_text','warnings'):
         vals=d.get(key) or []
         d[key]=[x for x in (_remove_watermark_text(v) for v in vals) if x]
-    # 정상적인 숫자형 바코드만 유지한다. 앱 워터마크나 상품명이 섞인 값은 제거한다.
+
+    # 신발 라벨에서는 내부 관리번호가 아니라 실제 브랜드 스타일코드를 상품코드로 선택한다.
+    # 예: NBPDFS193I(내부번호) / U9060ECA(상품코드) / NBPDFS193I39240(바코드문자열)
+    candidates=[d.get('product_code'), d.get('model_no'), d.get('style_code'), d.get('article_no')]
+    for item in d.get('model_candidates') or []:
+        if isinstance(item,dict):
+            if item.get('role') == 'model': candidates.insert(0,item.get('text') or item.get('code'))
+            elif item.get('role') not in ('internal','barcode_text'): candidates.append(item.get('text') or item.get('code'))
+        else: candidates.append(item)
+    for line in d.get('visible_text') or []:
+        candidates.extend(re.findall(r'\b[A-Z]{1,3}[A-Z0-9-]{4,13}\b', str(line).upper()))
+    best=_pick_best_model(candidates,d.get('brand',''))
+    if best: d['product_code']=best
+
+    # 정상적인 숫자형 EAN/UPC/GTIN만 일반 바코드로 유지한다.
     raw=str(d.get('barcode') or '')
     digits=re.sub(r'\D','',raw)
     d['barcode']=digits if 8 <= len(digits) <= 14 else ''
-    # 검색어에도 워터마크가 남지 않도록 마지막으로 한 번 더 정리한다.
-    d['coupang_query']=_remove_watermark_text(d.get('coupang_query'))
+
+    # 잘못 인식된 내부번호가 쿠팡 검색어에 들어가지 않게 검색어를 서버에서 다시 조립한다.
+    if best:
+        parts=[d.get('brand'), d.get('product_name'), d.get('variant'), best]
+        if d.get('size_mm'): parts.append(str(d.get('size_mm')))
+        elif d.get('volume'): parts.append(d.get('volume'))
+        if d.get('count'): parts.append(str(d.get('count'))+'개')
+        d['coupang_query']=' '.join(str(x).strip() for x in parts if x and str(x).strip())
+    else:
+        d['coupang_query']=_remove_watermark_text(d.get('coupang_query'))
     d['fallback_query']=d['barcode'] or _remove_watermark_text(d.get('fallback_query'))
+    d.pop('model_candidates',None)
     return d
 
 def normalize_sneaker_result(d):
@@ -111,13 +143,13 @@ GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다
 3. 바코드 숫자(EAN/UPC/GTIN). 바코드 아래 숫자를 정확히 읽되 모델번호와 혼동하지 않는다.
 4. 제조사 또는 수입자, 원산지, 제품 유형이 보이면 기록한다.
 5. 디자인 식별정보: 포장 주색상, 로고 위치, 캐릭터, 용기 형태, 전면에 보이는 핵심 문구를 짧게 정리한다. 검색어 보조용일 뿐 보이지 않는 특징은 만들지 않는다.
-6. 신발·의류·가전 등 모델번호가 있는 상품은 product_code에 정확히 넣는다. 신발은 브랜드 스타일코드(예: U9060ECA, DD1391-100, IF6490)를 바코드나 내부 일련번호보다 우선한다.
+6. 신발·의류·가전 등 모델번호가 있는 상품은 product_code에 정확히 넣는다. 신발은 브랜드 스타일코드(예: U9060ECA, DD1391-100, IF6490)를 바코드나 내부 일련번호보다 우선한다. 뉴발란스 라벨에서 NBPDFS로 시작하는 코드는 내부 관리번호이므로 product_code로 절대 선택하지 않는다. 예시 사진처럼 NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 보이면 product_code는 반드시 U9060ECA, internal_code는 NBPDFS193I이며 긴 문자열은 barcode_text다.
 7. 신발이면 한국/JP 사이즈(mm), US 사이즈, 색상을 각각 구분한다.
 8. 가격표가 보이면 이미 할인 적용되어 실제 결제할 표시가격을 price에 넣고, 정상가는 list_price에 넣는다. 가격표가 없으면 0으로 둔다.
 9. 쿠팡 검색에 가장 적합한 짧고 정확한 검색어를 coupang_query에 만든다. 브랜드 + 상품명 + 모델번호(있을 때) + 용량/수량 순으로 구성하고, 광고문구·가격·바코드는 넣지 않는다. 상품명이 불명확할 때만 바코드를 fallback_query에 넣는다.
 
 설명 없이 JSON 하나만 반환:
-{"category":"식품|생활용품|뷰티|완구|반려동물|유아용품|의류|신발|가전|기타","brand":"","product_name":"","variant":"","product_code":"","barcode":"","manufacturer":"","origin":"","volume":"","count":0,"size_mm":0,"us_size":"","color":"","design_features":[""],"list_price":0,"price":0,"promotion":"","coupang_query":"","fallback_query":"","visible_text":[""],"confidence":"높음|보통|낮음","warnings":[""]}'''
+{"category":"식품|생활용품|뷰티|완구|반려동물|유아용품|의류|신발|가전|기타","brand":"","product_name":"","variant":"","product_code":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","barcode":"","manufacturer":"","origin":"","volume":"","count":0,"size_mm":0,"us_size":"","color":"","design_features":[""],"list_price":0,"price":0,"promotion":"","coupang_query":"","fallback_query":"","visible_text":[""],"confidence":"높음|보통|낮음","warnings":[""]}'''
 
 @app.post('/api/recognize-product')
 def product():
