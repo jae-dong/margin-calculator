@@ -11,13 +11,17 @@ def parse(t):
     m=re.search(r'\{.*\}',(t or '').strip(),re.S)
     if not m: raise ValueError('JSON 응답을 찾지 못했습니다.')
     return json.loads(m.group(0))
-def vision(prompt,tokens=500):
-    f=request.files.get('image')
-    if not f: return None,('사진 파일이 없습니다.',400)
-    mime=f.mimetype or 'image/jpeg'
-    if mime not in ALLOWED:return None,('JPG, PNG, WEBP만 지원합니다.',400)
-    url=f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
-    r=cli().responses.create(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),input=[{'role':'user','content':[{'type':'input_text','text':prompt},{'type':'input_image','image_url':url}]}],max_output_tokens=tokens)
+def vision(prompt,tokens=500,multiple=False):
+    files=request.files.getlist('images') if multiple else [request.files.get('image')]
+    files=[f for f in files if f]
+    if not files: return None,('사진 파일이 없습니다.',400)
+    content=[{'type':'input_text','text':prompt}]
+    for f in files[:6]:
+        mime=f.mimetype or 'image/jpeg'
+        if mime not in ALLOWED:return None,('JPG, PNG, WEBP만 지원합니다.',400)
+        url=f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
+        content.append({'type':'input_image','image_url':url})
+    r=cli().responses.create(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),input=[{'role':'user','content':content}],max_output_tokens=tokens)
     return parse(r.output_text),None
 @app.get('/')
 def home():return send_from_directory('.','index.html')
@@ -48,12 +52,21 @@ def sneaker():
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
     except Exception as x:return jsonify(error=f'신발 라벨 인식 오류: {x}'),502
 
-@app.post('/api/recognize-kream-capture')
-def kream_capture():
+@app.post('/api/recognize-kream-captures')
+def kream_captures():
     try:
-        d,e=vision('KREAM 상품 상세 또는 시세 화면 캡처를 분석한다. 사용자가 선택한 특정 사이즈 화면에서 보이는 정보만 정확히 추출한다. 보이지 않는 값은 0 또는 빈 문자열로 둔다. 날짜는 YYYY-MM-DD 형식으로 변환한다. 최근 거래 내역은 화면에 보이는 순서대로 최대 5건 반환한다. JSON 하나만 반환: {"model_no":"","size":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"confidence":"높음|보통|낮음"}',1000)
+        prompt='''여러 장의 KREAM 화면 캡처를 하나의 묶음으로 분석한다. 보통 한 장은 체결 거래 내역, 다른 한 장은 판매입찰 또는 구매입찰 화면이다. 모든 사진에서 같은 상품과 같은 사이즈의 정보를 합쳐라. 실제 화면에 보이는 값만 사용하고 추측하지 않는다. 사이즈는 한국/JP mm를 우선한다. 날짜는 YYYY-MM-DD로 변환한다. 중복 거래는 제거하고 최신순 최대 10건을 반환한다. 판매입찰 화면의 최저 판매희망가는 lowest_ask, 구매입찰 화면의 최고 구매희망가는 highest_bid에 넣는다. 최근 거래가는 가장 최신 체결가이다. 화면에 보이는 체결 거래 개수도 visible_trade_count에 넣는다. JSON 하나만 반환: {"model_no":"","product_name":"","size":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"capture_types":["체결거래","판매입찰","구매입찰"],"confidence":"높음|보통|낮음"}'''
+        d,e=vision(prompt,1600,multiple=True)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
-    except Exception as x:return jsonify(error=f'KREAM 캡처 인식 오류: {x}'),502
+    except Exception as x:return jsonify(error=f'KREAM 다중 캡처 인식 오류: {x}'),502
+
+@app.post('/api/recognize-sneaker-outlet-tag')
+def sneaker_outlet_tag():
+    try:
+        prompt='''아울렛 신발 가격표 또는 신발 박스 라벨 사진을 분석한다. 사진에 함께 보이는 브랜드, 모델번호, 상품명, 색상, 한국/JP 사이즈(mm), 바코드, 정상가, 가격표에 이미 할인이 적용되어 표시된 현재 판매가, 가격표의 1차 할인율을 추출한다. 가장 중요한 값은 고객이 매장에서 추가 할인을 받기 전 가격표에 적힌 할인 적용 판매가이며 반드시 sale_price에 넣는다. 정상가와 할인가가 모두 보이면 정상가는 list_price, 이미 할인 적용된 표시가는 sale_price로 정확히 구분한다. 취소선 가격·권장소비자가·정상가는 sale_price로 넣지 않는다. 여러 가격이 있으면 'SALE', '할인가', '회원가', '판매가', 가장 크거나 강조된 결제 가격 등의 문맥으로 실제 표시 할인가를 판단한다. 가격표에 적힌 할인율은 shown_discount_rate이며 이것은 이미 sale_price에 반영된 1차 할인율이다. 사용자가 별도로 적용할 추가 할인율과 혼동하거나 합산하지 않는다. 한 가격만 보여 할인가인지 확실하지 않으면 price_type을 unknown으로 하고 확인된 가격을 list_price에 넣는다. 보이지 않는 값은 0 또는 빈 문자열로 둔다. 임의 추측 금지. JSON 하나만 반환: {"brand":"나이키|뉴발란스|아디다스|언더아머|기타","model_no":"","product_name":"","size":0,"color":"","barcode":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"price_type":"normal|sale|unknown","confidence":"높음|보통|낮음"}'''
+        d,e=vision(prompt,900)
+        return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
+    except Exception as x:return jsonify(error=f'아울렛 가격표 인식 오류: {x}'),502
 
 @app.post('/api/analyze-kream-url')
 def analyze_kream_url():
