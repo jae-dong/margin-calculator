@@ -75,18 +75,34 @@ def vision(prompt,tokens=500,multiple=False):
 def home():return send_from_directory('.','index.html')
 @app.get('/<path:p>')
 def static_file(p):return send_from_directory('.',p)
+GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다. 상품 본체, 포장 앞면/뒷면, 가격표, 신발 박스 라벨 중 하나일 수 있다. 사진에 실제로 보이는 정보만 사용하고 추측하지 않는다.
+
+반드시 확인할 항목:
+1. 브랜드와 정확한 상품명. 포장에 적힌 핵심 제품명, 라인명, 맛/향/색상/종류를 분리한다.
+2. 용량·중량·규격·입수·묶음 수량. 예: 210g, 500ml, 30매, 6입.
+3. 바코드 숫자(EAN/UPC/GTIN). 바코드 아래 숫자를 정확히 읽되 모델번호와 혼동하지 않는다.
+4. 제조사 또는 수입자, 원산지, 제품 유형이 보이면 기록한다.
+5. 디자인 식별정보: 포장 주색상, 로고 위치, 캐릭터, 용기 형태, 전면에 보이는 핵심 문구를 짧게 정리한다. 검색어 보조용일 뿐 보이지 않는 특징은 만들지 않는다.
+6. 신발·의류·가전 등 모델번호가 있는 상품은 product_code에 정확히 넣는다. 신발은 브랜드 스타일코드(예: U9060ECA, DD1391-100, IF6490)를 바코드나 내부 일련번호보다 우선한다.
+7. 신발이면 한국/JP 사이즈(mm), US 사이즈, 색상을 각각 구분한다.
+8. 가격표가 보이면 이미 할인 적용되어 실제 결제할 표시가격을 price에 넣고, 정상가는 list_price에 넣는다. 가격표가 없으면 0으로 둔다.
+9. 쿠팡 검색에 가장 적합한 짧고 정확한 검색어를 coupang_query에 만든다. 브랜드 + 상품명 + 모델번호(있을 때) + 용량/수량 순으로 구성하고, 광고문구·가격·바코드는 넣지 않는다. 상품명이 불명확할 때만 바코드를 fallback_query에 넣는다.
+
+설명 없이 JSON 하나만 반환:
+{"category":"식품|생활용품|뷰티|완구|반려동물|유아용품|의류|신발|가전|기타","brand":"","product_name":"","variant":"","product_code":"","barcode":"","manufacturer":"","origin":"","volume":"","count":0,"size_mm":0,"us_size":"","color":"","design_features":[""],"list_price":0,"price":0,"promotion":"","coupang_query":"","fallback_query":"","visible_text":[""],"confidence":"높음|보통|낮음","warnings":[""]}'''
+
 @app.post('/api/recognize-product')
 def product():
     try:
-        d,e=vision('상품 사진을 분석한다. 사진에 실제로 보이는 정보만 사용한다. JSON 하나만 반환: {"product_name":"","brand":"","volume":"","count":0,"confidence":"높음|보통|낮음"}')
+        d,e=vision(GENERAL_PRODUCT_PROMPT,1200)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
-    except Exception as x:return jsonify(error=f'상품 인식 오류: {x}'),502
+    except Exception as x:return jsonify(error=f'상품 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-price-tag')
 def price():
     try:
-        d,e=vision('한국 매장 가격표를 분석한다. 실제로 보이는 정보만 사용한다. JSON 하나만 반환: {"product_name":"","price":0,"promotion":"","volume":"","confidence":"높음|보통|낮음"}')
+        d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',1200)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
-    except Exception as x:return jsonify(error=f'가격표 인식 오류: {x}'),502
+    except Exception as x:return jsonify(error=f'가격표 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-receipt')
 def receipt():
     try:
