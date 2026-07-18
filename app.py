@@ -112,6 +112,15 @@ def sneaker():
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'신발 라벨 인식 오류: {x}'),502
 
+
+@app.post('/api/recognize-sneaker-batch')
+def sneaker_batch():
+    try:
+        prompt='여러 장의 사진을 하나의 스니커즈 소싱 건으로 통합 분석한다. 사진들은 신발 박스 라벨, 아울렛 가격표, KREAM 체결 거래, 판매입찰, 구매입찰 화면이 섞여 있을 수 있다. 먼저 각 사진 유형을 분류한 뒤 같은 상품·같은 사이즈의 정보만 합친다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다.\n\n모델번호 규칙: 브랜드 스타일코드를 최우선으로 선택한다. 바코드 아래 긴 문자열·EAN·UPC·내부 물류번호는 모델번호가 아니다. NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 있으면 model_no는 U9060ECA, internal_code는 NBPDFS193I, barcode는 NBPDFS193I39240이다.\n사이즈 규칙: 한국/JP mm 220~320을 우선하고 US 사이즈와 혼동하지 않는다.\n가격표 규칙: 가격표에 이미 할인 적용되어 크게 표시된 현재 판매가를 sale_price에 넣는다. 정상가는 list_price다. 가격표의 기존 할인율은 shown_discount_rate이며 사용자의 추가 할인율과 합산하지 않는다.\nKREAM 규칙: 실제 체결 거래만 trades에 넣고 날짜는 YYYY-MM-DD, 가격은 원 단위 정수로 한다. 판매입찰은 lowest_ask, 구매입찰은 highest_bid로 분리한다. 중복 체결은 제거하고 최신순 최대 10건으로 반환한다.\n서로 다른 모델이 섞이면 가장 많은 사진에서 일치하는 모델을 대표로 선택하고 conflicts에 경고를 넣는다.\n설명 없이 JSON 하나만 반환:\n{"image_types":["박스라벨","가격표","체결거래","판매입찰","구매입찰"],"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[],"internal_code":"","barcode":"","product_name":"","color":"","size":0,"us_size":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}'
+        d,e=vision(prompt,2200,multiple=True)
+        return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
+    except Exception as x:return jsonify(error=f'통합 사진 분석 오류: {x}'),502
+
 @app.post('/api/recognize-kream-captures')
 def kream_captures():
     try:
