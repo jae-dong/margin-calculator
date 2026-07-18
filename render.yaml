@@ -1,14 +1,12 @@
 services:
   - type: web
     name: margin-calculator
-    runtime: python
+    env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-    healthCheckPath: /health
     envVars:
-      - key: OPENAI_API_KEY
-        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
-      - key: OPENAI_SEARCH_MODEL
-        value: gpt-4.1
