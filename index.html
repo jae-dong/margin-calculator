@@ -1,7 +1,7 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v3.1</title><style>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v3.2</title><style>
 :root{--n:#183b66;--bg:#f3f5f8;--line:#dfe5ec;--g:#176b28;--r:#a31515;--o:#8a4b00}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,'Noto Sans KR',sans-serif;color:#111}.app{max-width:760px;margin:auto;padding:14px 12px 95px}.hero{background:linear-gradient(135deg,#102a48,var(--n));color:#fff;border-radius:22px;padding:22px}.hero h1{margin:0 0 8px;font-size:25px}.hero p{margin:0;font-size:13px;font-weight:700}.ver{display:inline-block;margin-top:9px;padding:4px 9px;border-radius:999px;background:#ffffff22;font-size:11px;font-weight:900}.tabs,.modes,.actions,.grid2,.metrics{display:grid;gap:9px}.tabs{grid-template-columns:repeat(5,1fr);margin:12px 0}.modes{grid-template-columns:1fr 1fr}.actions,.grid2{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(3,1fr)}button{border:0;border-radius:13px;padding:12px;font-weight:900;cursor:pointer}.tab,.mode,.secondary{background:#e7ebf1;color:#1e2a36}.tab.active,.mode.active,.primary{background:var(--n);color:#fff}.danger{background:#fdeaea;color:var(--r)}.page,.modepage{display:none}.page.active,.modepage.active{display:block}.card{background:#fff;border-radius:19px;padding:17px;margin:13px 0;box-shadow:0 7px 22px #00000010}.card h2{font-size:18px;margin:0 0 14px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:900;margin-bottom:7px}input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:13px;font:inherit}textarea{min-height:110px}.metric{background:#f0f3f7;border-radius:15px;padding:13px 7px;text-align:center}.metric.good{background:#eef9f1;border:1px solid #a7dcb4}.lab{font-size:11px;font-weight:900;color:#5d6874}.val{font-size:21px;font-weight:900;margin-top:6px}.decision,.alert{padding:14px;border-radius:14px;font-weight:900;line-height:1.5;margin-top:11px}.buy,.ok{background:#eaf7ef;color:var(--g);border:1px solid #b7e1c2}.review,.warn{background:#fff4e5;color:var(--o);border:1px solid #ffd8a8}.stop{background:#fff0f0;color:var(--r);border:1px solid #ffc9c9}.alert{display:none;font-size:13px}.alert.ok,.alert.warn{display:block}.sub,.meta{font-size:12px;color:#66717d;line-height:1.55;white-space:pre-wrap;margin-top:7px}.record{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;background:#fbfcfd}.empty{text-align:center;color:#7d8792;padding:20px}.sticky{position:fixed;bottom:0;left:0;right:0;background:#fffffff2;border-top:1px solid var(--line);padding:8px}.sticky>div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:7px}.quick button{padding:8px 3px;font-size:12px}@media(max-width:520px){.tabs{display:none}.grid2{grid-template-columns:1fr}.val{font-size:17px}}
 .tradegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.capturebox{border:2px dashed #b8c3cf;border-radius:15px;padding:14px;text-align:center;background:#f8fafc}.autofill{background:#edf7ff;color:#0b4f6c;border:1px solid #a5d8ff;display:block}.tiny{font-size:11px;color:#6b7682;line-height:1.5}.batchbox{border:2px solid #183b66;border-radius:17px;padding:14px;background:#f4f8fc}.batchlist{margin-top:8px;font-size:12px;color:#52606d;line-height:1.6}.progress{height:8px;background:#e1e7ee;border-radius:99px;overflow:hidden;margin-top:10px}.progress>div{height:100%;background:#183b66;width:0;transition:width .25s}</style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품과 스니커즈 리셀을 한 번에 판단합니다.</p><span class="ver">WEB v3.1</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품과 스니커즈 리셀을 한 번에 판단합니다.</p><span class="ver">WEB v3.2</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div>
 <section id="m-g" class="modepage active">
@@ -183,10 +183,20 @@ function cleanKreamInput(e){const value=e.target.value;const url=extractKreamUrl
 function kreamSearchUrl(model){return 'https://kream.co.kr/search?keyword='+encodeURIComponent(String(model||'').trim())+'&adp_refresh='+Date.now()}
 function kreamAppIntentUrl(model){
  const web=kreamSearchUrl(model),u=new URL(web),path=(u.pathname||'/search').replace(/^\//,'');
- return `intent://${u.host}/${path}?${u.searchParams.toString()}#Intent;scheme=https;package=com.fstudio.kream;S.browser_fallback_url=${encodeURIComponent(web)};end`;
+ const play='https://play.google.com/store/apps/details?id=com.fstudio.kream';
+ return `intent://${u.host}/${path}?${u.searchParams.toString()}#Intent;scheme=https;package=com.fstudio.kream;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(play)};end`;
 }
-function saveSneakerDraft(){const ids=['sBrand','sModel','sSize','sListPrice','sDiscount','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale'];const d={};ids.forEach(id=>{const el=$(id);if(el)d[id]=el.value});localStorage.setItem('sneakerDraftV31',JSON.stringify(d))}
-function restoreSneakerDraft(){try{const d=JSON.parse(localStorage.getItem('sneakerDraftV31')||localStorage.getItem('sneakerDraftV27')||'{}');Object.entries(d).forEach(([id,v])=>{const el=$(id);if(el&&v!==undefined&&v!==null&&v!=='')el.value=v})}catch(e){}}
+function launchKreamApp(model){
+ model=String(model||'').trim();if(!model)return false;
+ const isAndroid=/Android/i.test(navigator.userAgent);
+ if(!isAndroid){window.location.href=kreamSearchUrl(model);return true}
+ const intent=kreamAppIntentUrl(model);
+ // Android에서는 KREAM 패키지를 명시한 Intent로 실행해 모바일 웹 대신 앱을 우선 엽니다.
+ window.location.href=intent;
+ return true;
+}
+function saveSneakerDraft(){const ids=['sBrand','sModel','sSize','sListPrice','sDiscount','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale'];const d={};ids.forEach(id=>{const el=$(id);if(el)d[id]=el.value});localStorage.setItem('sneakerDraftV32',JSON.stringify(d))}
+function restoreSneakerDraft(){try{const d=JSON.parse(localStorage.getItem('sneakerDraftV32')||localStorage.getItem('sneakerDraftV31')||localStorage.getItem('sneakerDraftV27')||'{}');Object.entries(d).forEach(([id,v])=>{const el=$(id);if(el&&v!==undefined&&v!==null&&v!=='')el.value=v})}catch(e){}}
 function resetKreamAnalysisForNewProduct(){
  ['sModel','sSize','sHighSale','sAvgSale','sLowSale'].forEach(id=>{if($(id))$(id).value=''});
  for(let i=1;i<=5;i++){if($('sTradeDate'+i))$('sTradeDate'+i).value='';if($('sTradePrice'+i))$('sTradePrice'+i).value=''}
@@ -203,11 +213,9 @@ function connectKream(model){
  saveSneakerDraft();
  $('kreamOpenBtn').style.display='block';$('kreamAutoOpen').style.display='block';
  $('kreamAutoOpen').innerHTML=`모델번호 <b>${esc(model)}</b> 인식 완료 · KREAM 앱에서 새 상품 검색을 엽니다.`;
- const isAndroid=/Android/i.test(navigator.userAgent);
- const target=isAndroid?kreamAppIntentUrl(model):kreamSearchUrl(model);
  sessionStorage.setItem('lastKreamModel',model);
  sessionStorage.setItem('lastKreamLaunchAt',String(Date.now()));
- setTimeout(()=>{window.location.href=target},250);
+ setTimeout(()=>launchKreamApp(model),180);
  return true;
 }
 function openKreamFromCurrent(){const model=$('sModel').value.trim();if(!model)return alert('먼저 사진을 인식하거나 모델번호를 입력하세요.');connectKream(model)}
