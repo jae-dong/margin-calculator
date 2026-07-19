@@ -375,32 +375,52 @@ def export_excel():
 
         # 일반상품 기록
         ws=wb.add_worksheet('일반상품 기록')
-        headers=['저장일시','상품명','소싱매장','묶음수량','판매가','개당 소싱가','총 소싱가','쿠팡 수수료','배송비','기타비용','예상 납부 부가세','종소세 전 이익','예상 종소세·지방소득세','세율','세후 최종 순이익','실마진율','메모']
+        headers=['저장일시','분류','브랜드','상품명','옵션/종류','상품코드','바코드','용량·규격','인식수량','색상','제조사','원산지','소싱매장','내 판매 구성','쿠팡 상품 구성','쿠팡 검색어','쿠팡 판매가','개당 소싱가','총 소싱가','쿠팡 수수료율','쿠팡 수수료','배송비','기타비용','매출 부가세','추정 매입 부가세','예상 납부 부가세','종소세 전 이익','종소세·지방소득세율','예상 종소세·지방소득세','세후 최종 순이익','실마진율','ROI','인식 신뢰도','포장·디자인 특징','인식된 원문','확인사항','메모']
         for c,h in enumerate(headers): ws.write(0,c,h,head)
         for r,x in enumerate(general,1):
-            vals=[parse_dt(x.get('date')),x.get('name',''),x.get('store',''),x.get('bundle',0),x.get('sale',0),x.get('unitCost',0),x.get('cost',0),x.get('fee',0),x.get('ship',0),x.get('other',0),x.get('vat',0),x.get('profitBeforeIncomeTax',0),x.get('incomeTax',0),x.get('incomeTaxRate',0),x.get('profit',0),x.get('margin',0),x.get('memo','')]
+            scan=x.get('scan') or {}; vals=[parse_dt(x.get('date')),x.get('category') or scan.get('category',''),x.get('brand') or scan.get('brand',''),x.get('productName') or scan.get('product_name') or x.get('name',''),x.get('variant') or scan.get('variant',''),x.get('productCode') or scan.get('product_code',''),x.get('barcode') or scan.get('barcode',''),x.get('volume') or scan.get('volume',''),x.get('count') or scan.get('count',0),x.get('color') or scan.get('color',''),x.get('manufacturer') or scan.get('manufacturer',''),x.get('origin') or scan.get('origin',''),x.get('store',''),x.get('bundle',0),x.get('marketBundle',0),x.get('coupangQuery') or scan.get('coupang_query',''),x.get('sale',0),x.get('unitCost',0),x.get('cost',0),x.get('feeRate',settings.get('fee',11.8)),x.get('fee',0),x.get('ship',0),x.get('other',0),x.get('outputVat',0),x.get('inputVat',0),x.get('vat',0),x.get('profitBeforeIncomeTax',0),x.get('incomeTaxRate',0),x.get('incomeTax',0),x.get('profit',0),x.get('margin',0),x.get('roi',0),x.get('confidence') or scan.get('confidence',''),' · '.join(x.get('designFeatures') or scan.get('design_features') or []),' | '.join(x.get('visibleText') or scan.get('visible_text') or []),' · '.join(x.get('warnings') or scan.get('warnings') or []),x.get('memo','')]
             for c,v in enumerate(vals):
-                fmt=dtfmt if c==0 and isinstance(v,datetime) else (integer if c==3 else (money if c in (4,5,6,7,8,9,10,11,12,14) else (percent if c in (13,15) else text)))
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else (integer if c in (8,13,14) else (money if c in (16,17,18,20,21,22,23,24,25,26,28,29) else (percent if c in (19,27,30,31) else text)))
                 if isinstance(v,(int,float)) and c not in (0,): ws.write_number(r,c,float(v),fmt)
                 elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
                 else: ws.write(r,c,v,fmt)
         ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(general)),len(headers)-1)
-        ws.set_column(0,0,18); ws.set_column(1,2,24); ws.set_column(3,15,15); ws.set_column(16,16,34)
+        ws.set_column(0,0,18); ws.set_column(1,15,18); ws.set_column(16,31,15); ws.set_column(32,36,32)
 
         # 스니커즈 기록
         ws=wb.add_worksheet('스니커즈 기록')
-        headers=['저장일시','브랜드','모델번호','사이즈','소싱매장','정상가','할인율','최종 매입가','최고 체결가','평균 체결가','최저 체결가','수요','최고가 순이익','평균가 순이익','최저가 순이익','최고가 마진율','평균가 마진율','최저가 마진율','표시 거래수','추세','최근거래 경과일']
+        headers=['저장일시','브랜드','모델번호','내부코드','바코드','사이즈','색상','원산지','소싱매장','가격표 표시가','추가 할인율','할인금액','최종 매입가','최고 체결가','평균 체결가','최저 체결가','수요','수요 판단근거','확인 거래수','거래 추세','최근거래 경과일','최고가 순이익','평균가 순이익','최저가 순이익','최고가 마진율','평균가 마진율','최저가 마진율','최고가 ROI','평균가 ROI','최저가 ROI','KREAM 분석 모드','캡처 화면 종류','비교 참고사항','충돌/경고','상품사진 인식 신뢰도','KREAM 분석 신뢰도','사진 자동분류','판매수수료율','기본수수료','수수료 부가세율','판매자 배송비','평균가 기준 예상 부가세','평균가 기준 종소세 전 이익','평균가 기준 예상 종소세','평균가 기준 정산금액']
         for c,h in enumerate(headers): ws.write(0,c,h,head)
         for r,x in enumerate(sneakers,1):
             ta=x.get('tradeAnalysis') or {}
-            vals=[parse_dt(x.get('date')),x.get('brand',''),x.get('model',''),x.get('size',0),x.get('store',''),x.get('listPrice',0),x.get('discount',0),x.get('buy',0),x.get('highSale',0),x.get('avgSale',0),x.get('lowSale',0),x.get('demand',''),x.get('highProfit',0),x.get('avgProfit',0),x.get('lowProfit',0),x.get('highMargin',0),x.get('avgMargin',0),x.get('lowMargin',0),ta.get('count',0),ta.get('trend',''),ta.get('days',0)]
+            avgd=x.get('avgDetail') or {}; vals=[parse_dt(x.get('date')),x.get('brand',''),x.get('model',''),x.get('internalCode',''),x.get('barcode',''),x.get('size',0),x.get('color',''),x.get('origin',''),x.get('store',''),x.get('listPrice',0),x.get('discount',0),x.get('discountAmount',0),x.get('buy',0),x.get('highSale',0),x.get('avgSale',0),x.get('lowSale',0),x.get('demand',''),x.get('demandReason',''),x.get('visibleTradeCount',ta.get('count',0)),ta.get('trend',''),ta.get('days',0),x.get('highProfit',0),x.get('avgProfit',0),x.get('lowProfit',0),x.get('highMargin',0),x.get('avgMargin',0),x.get('lowMargin',0),x.get('highROI',0),x.get('avgROI',0),x.get('lowROI',0),x.get('kreamMode',''),' · '.join(x.get('captureTypes') or []),x.get('comparisonNote',''),' · '.join(x.get('conflicts') or []),x.get('confidence',''),x.get('kreamConfidence',''),' · '.join(x.get('imageTypes') or []),settings.get('sFee',6),settings.get('sBaseFee',2500),settings.get('sFeeVat',10),settings.get('sShip',3000),avgd.get('vat',0),avgd.get('profitBeforeIncomeTax',0),avgd.get('incomeTax',0),avgd.get('settlement',0)]
             for c,v in enumerate(vals):
-                fmt=dtfmt if c==0 and isinstance(v,datetime) else (percent if c in (6,15,16,17) else (money if c in (5,7,8,9,10,12,13,14) else (integer if c in (3,18,20) else text)))
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else (percent if c in (10,24,25,26,27,28,29,37,39) else (money if c in (9,11,12,13,14,15,21,22,23,38,40,41,42,43,44) else (integer if c in (5,18,20) else text)))
                 if isinstance(v,(int,float)) and c!=0: ws.write_number(r,c,float(v),fmt)
                 elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
                 else: ws.write(r,c,v,fmt)
         ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(sneakers)),len(headers)-1)
-        ws.set_column(0,0,18); ws.set_column(1,4,18); ws.set_column(5,20,15)
+        ws.set_column(0,0,18); ws.set_column(1,8,18); ws.set_column(9,29,15); ws.set_column(30,36,26); ws.set_column(37,44,16)
+
+        # KREAM 사이즈별 분석
+        ws=wb.add_worksheet('KREAM 사이즈별 분석')
+        headers=['저장일시','브랜드','모델번호','기준 매입가','사이즈','거래량','최근 체결가','평균 체결가','최고 체결가','최저 체결가','최근 거래일','최근거래 경과일','판매입찰 최저가','구매입찰 최고가','수요','추천 근거','기준 예상 순이익','기준 ROI','체결거래 원문']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        rr=1
+        for x in sneakers:
+            rows=x.get('sizeRows') or (x.get('kreamAnalysis') or {}).get('sizes') or []
+            for row in rows:
+                ref=float(row.get('avg_price') or row.get('recent_price') or row.get('lowest_ask') or 0)
+                buy=float(x.get('buy') or 0); fee=ref*float(settings.get('sFee',6))/100+float(settings.get('sBaseFee',2500)); fee_vat=fee*float(settings.get('sFeeVat',10))/100; ship=float(settings.get('sShip',3000)); output_vat=ref/11; input_vat=buy/11+fee_vat+ship/11; vat=max(0,output_vat-input_vat); pre=ref-fee-fee_vat-ship-buy-vat; tax=max(0,pre)*float(settings.get('incomeTaxRate',42))/100; profit=pre-tax; roi=(profit/buy*100) if buy else 0
+                vals=[parse_dt(x.get('date')),x.get('brand',''),x.get('model',''),buy,row.get('size',0),row.get('trade_count',0),row.get('recent_price',0),row.get('avg_price',0),row.get('high_price',0),row.get('low_price',0),row.get('recent_date',''),row.get('days_since_last_trade',0),row.get('lowest_ask',0),row.get('highest_bid',0),row.get('demand',''),row.get('recommendation_reason',''),profit,roi,' | '.join(f"{t.get('date','')} {t.get('price',0)}" for t in (row.get('trades') or []))]
+                for c,v in enumerate(vals):
+                    fmt=dtfmt if c==0 and isinstance(v,datetime) else (money if c in (3,6,7,8,9,12,13,16) else (percent if c==17 else (integer if c in (4,5,11) else text)))
+                    if isinstance(v,(int,float)): ws.write_number(rr,c,float(v),fmt)
+                    elif isinstance(v,datetime): ws.write_datetime(rr,c,v,fmt)
+                    else: ws.write(rr,c,v,fmt)
+                rr+=1
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,rr-1),len(headers)-1)
+        ws.set_column(0,3,18); ws.set_column(4,17,15); ws.set_column(18,18,38)
 
         # 장바구니
         ws=wb.add_worksheet('장바구니')
