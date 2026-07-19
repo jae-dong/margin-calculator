@@ -122,7 +122,7 @@ def vision(prompt,tokens=500,multiple=False):
     files=[f for f in files if f]
     if not files: return None,('사진 파일이 없습니다.',400)
     content=[{'type':'input_text','text':prompt}]
-    for f in files[:6]:
+    for f in files[:10]:
         mime=f.mimetype or 'image/jpeg'
         if mime not in ALLOWED:return None,('JPG, PNG, WEBP만 지원합니다.',400)
         url=f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
@@ -200,9 +200,49 @@ def sneaker_batch():
 @app.post('/api/recognize-kream-captures')
 def kream_captures():
     try:
-        prompt='''여러 장의 KREAM 화면 캡처를 하나의 묶음으로 분석한다. 핵심은 같은 상품·같은 사이즈의 체결 거래 내역이다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다. 사이즈는 한국/JP mm를 우선한다. 날짜는 YYYY-MM-DD로 변환한다. 중복 거래는 제거하고 최신순 최대 10건을 반환한다. 판매입찰이나 구매입찰 화면이 함께 있어도 참고정보로만 구분하고, 일반판매 수익 계산에 사용할 가격은 trades의 실제 체결 거래가다. 최근 거래가는 가장 최신 체결가이다. 화면에 보이는 체결 거래 개수도 visible_trade_count에 넣는다. JSON 하나만 반환: {"model_no":"","product_name":"","size":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"capture_types":["체결거래","판매입찰","구매입찰"],"confidence":"높음|보통|낮음"}'''
-        d,e=vision(prompt,1600,multiple=True)
-        return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
+        scope=str(request.form.get('scope','auto') or 'auto').lower()
+        scope_note={'all':'사용자가 모든 옵션 화면이라고 지정했다. 여러 사이즈를 반드시 분리해 비교한다.','single':'사용자가 단일 사이즈 화면이라고 지정했다. 비교군을 만들지 말고 해당 사이즈만 분석하며 comparison_note에 비교자료 부족을 명시한다.'}.get(scope,'화면 구조를 보고 모든 옵션인지 단일 사이즈인지 자동 판단한다.')
+        prompt=f'''여러 장의 KREAM 스크린샷을 하나의 상품으로 정밀 분석한다. {scope_note}
+
+반드시 수행할 작업:
+1. 각 화면이 모든 옵션 목록인지, 특정 단일 사이즈 상세인지 판단하고 analysis_mode를 all 또는 single로 반환한다.
+2. 모든 옵션 화면이면 보이는 각 사이즈를 별도 행으로 분리한다. 사이즈별 실제 체결거래 수, 최근 체결가, 평균가, 최고가, 최저가, 최근 거래일, 판매입찰 최저가, 구매입찰 최고가를 추출한다.
+3. 거래량은 화면에 실제 표시된 체결 건수 또는 보이는 거래 행 수만 사용한다. 보이지 않는 수치를 추측하지 않는다.
+4. 사이즈 추천은 거래량, 최근성, 가격 안정성으로 판단한다. 단, 화면에 보이는 자료 범위 안에서만 demand를 높음/보통/낮음/자료부족으로 표시한다.
+5. 단일 사이즈 화면이면 그 사이즈만 sizes에 넣고 comparison_note에 '단일옵션으로 사이즈 간 비교 불가'를 넣는다. 추천 순위나 다른 사이즈 수치를 만들어내지 않는다.
+6. 체결거래와 판매입찰을 혼동하지 않는다. 수익 계산 기준 가격은 실제 체결 평균가를 우선하고, 체결자료가 없을 때만 최근가 또는 판매입찰 최저가를 참고값으로 둔다.
+7. 날짜는 YYYY-MM-DD, 가격은 원 단위 정수, 사이즈는 한국/JP mm를 우선한다. 같은 거래 중복은 제거한다.
+8. 화면에 여러 모델이 섞였으면 conflicts에 경고하고 가장 많이 일치하는 모델만 대표로 둔다.
+
+설명 없이 JSON 하나만 반환:
+{{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":["모든옵션","단일옵션","체결거래","판매입찰","구매입찰"],"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}'''
+        d,e=vision(prompt,2800,multiple=True)
+        if e:
+            return jsonify(error=e[0]),e[1]
+        d=dict(d or {})
+        sizes=[]
+        for row in d.get('sizes') or []:
+            if not isinstance(row,dict):
+                continue
+            try: row['size']=int(float(row.get('size') or 0))
+            except: row['size']=0
+            for k in ('trade_count','recent_price','avg_price','high_price','low_price','days_since_last_trade','lowest_ask','highest_bid'):
+                try: row[k]=int(float(row.get(k) or 0))
+                except: row[k]=0
+            trades=[]
+            for t in row.get('trades') or []:
+                if isinstance(t,dict):
+                    try: price=int(float(t.get('price') or 0))
+                    except: price=0
+                    if price: trades.append({'date':str(t.get('date') or ''),'price':price})
+            row['trades']=trades[:10]
+            if row['size']:
+                sizes.append(row)
+        d['sizes']=sizes
+        d['analysis_mode']='all' if len(sizes)>1 else 'single'
+        if d['analysis_mode']=='single' and not d.get('comparison_note'):
+            d['comparison_note']='단일옵션으로 사이즈 간 비교 불가'
+        return jsonify(d)
     except Exception as x:return jsonify(error=f'KREAM 다중 캡처 인식 오류: {x}'),502
 
 @app.post('/api/recognize-sneaker-outlet-tag')
