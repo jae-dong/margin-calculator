@@ -10,7 +10,7 @@ ALLOWED={'image/jpeg','image/png','image/webp'}
 def cli():
     k=os.getenv('OPENAI_API_KEY')
     if not k: raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')
-    return OpenAI(api_key=k)
+    return OpenAI(api_key=k, timeout=45.0, max_retries=1)
 def parse(t):
     m=re.search(r'\{.*\}',(t or '').strip(),re.S)
     if not m: raise ValueError('JSON 응답을 찾지 못했습니다.')
@@ -249,7 +249,7 @@ def kream_captures():
 
 설명 없이 JSON 하나만 반환:
 {{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":["모든옵션","단일옵션","체결거래","판매입찰","구매입찰"],"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}'''
-        d,e=vision(prompt,2800,multiple=True)
+        d,e=vision(prompt,1400,multiple=True)
         if e:
             return jsonify(error=e[0]),e[1]
         d=dict(d or {})
