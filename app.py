@@ -329,6 +329,33 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
 
 
 
+
+@app.post('/api/analyze-market-keyword')
+def analyze_market_keyword():
+    """공개 웹 자료를 바탕으로 키워드 수요/경쟁을 추정한다."""
+    try:
+        body=request.get_json(silent=True) or {}
+        keyword=str(body.get('keyword') or '').strip()[:120]
+        if not keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
+        context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
+        prompt=f"""한국 온라인 쇼핑 상품 키워드의 수요와 경쟁강도를 공개 웹 자료로 조사하고 보수적으로 평가한다.
+키워드: {keyword}
+상품정보: {json.dumps(context,ensure_ascii=False)}
+
+참고 관점은 네이버 데이터랩 쇼핑인사이트, 아이템스카우트, 판다랭크, 셀러라이프(현 셀록홈즈) 같은 키워드 도구가 사용하는 일반적인 지표인 검색 관심도, 상품수/판매자수, 리뷰 집중도, 브랜드 강도, 가격경쟁, 계절성이다. 해당 서비스의 로그인·유료·비공개 수치를 우회하거나 복제하지 않는다. 공개 페이지에서 정확한 월간검색량을 확인할 수 없으면 숫자를 만들지 말고 exact_search_volume_available=false로 한다.
+
+수요점수와 경쟁점수는 0~100. 소싱지수는 현재 마진율/ROI도 반영하되 수요가 높고 경쟁이 낮을수록 높다. 근거가 약하면 confidence를 낮음으로 표시한다. 설명 없이 JSON 하나만 반환:
+{{"keyword":"","demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","exact_search_volume_available":false,"monthly_search_volume":0,"data_scope":"공개 웹 기반 AI 추정","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
+        r=cli().responses.create(model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),tools=[{'type':'web_search_preview'}],input=prompt,max_output_tokens=900)
+        d=parse(r.output_text)
+        for k in ('demand_score','competition_score','sourcing_score'):
+            d[k]=max(0,min(100,int(float(d.get(k) or 0))))
+        d['keyword']=d.get('keyword') or keyword
+        if not d.get('exact_search_volume_available'):d['monthly_search_volume']=0
+        d['data_scope']=d.get('data_scope') or '공개 웹 기반 AI 추정'
+        return jsonify(d)
+    except Exception as x:return jsonify(error=f'키워드 시장 분석 오류: {x}'),502
+
 @app.post('/api/export-excel')
 def export_excel():
     """브라우저 localStorage의 저장 데이터를 실제 .xlsx 파일로 내보낸다."""
@@ -375,12 +402,12 @@ def export_excel():
 
         # 일반상품 기록
         ws=wb.add_worksheet('일반상품 기록')
-        headers=['저장일시','분류','브랜드','상품명','옵션/종류','상품코드','바코드','용량·규격','인식수량','색상','제조사','원산지','소싱매장','내 판매 구성','쿠팡 상품 구성','쿠팡 검색어','쿠팡 판매가','개당 소싱가','총 소싱가','쿠팡 수수료율','쿠팡 수수료','배송비','기타비용','매출 부가세','추정 매입 부가세','예상 납부 부가세','종소세 전 이익','종소세·지방소득세율','예상 종소세·지방소득세','세후 최종 순이익','실마진율','ROI','인식 신뢰도','포장·디자인 특징','인식된 원문','확인사항','메모']
+        headers=['저장일시','분류','브랜드','상품명','옵션/종류','상품코드','바코드','용량·규격','인식수량','색상','제조사','원산지','소싱매장','내 판매 구성','쿠팡 상품 구성','쿠팡 검색어','핵심 키워드','예상 수요점수','경쟁강도점수','AI 소싱지수','예상 회전율','키워드 추천결과','키워드 분석 신뢰도','키워드 분석 근거','쿠팡 판매가','개당 소싱가','총 소싱가','쿠팡 수수료율','쿠팡 수수료','배송비','기타비용','매출 부가세','추정 매입 부가세','예상 납부 부가세','종소세 전 이익','종소세·지방소득세율','예상 종소세·지방소득세','세후 최종 순이익','실마진율','ROI','인식 신뢰도','포장·디자인 특징','인식된 원문','확인사항','메모']
         for c,h in enumerate(headers): ws.write(0,c,h,head)
         for r,x in enumerate(general,1):
-            scan=x.get('scan') or {}; vals=[parse_dt(x.get('date')),x.get('category') or scan.get('category',''),x.get('brand') or scan.get('brand',''),x.get('productName') or scan.get('product_name') or x.get('name',''),x.get('variant') or scan.get('variant',''),x.get('productCode') or scan.get('product_code',''),x.get('barcode') or scan.get('barcode',''),x.get('volume') or scan.get('volume',''),x.get('count') or scan.get('count',0),x.get('color') or scan.get('color',''),x.get('manufacturer') or scan.get('manufacturer',''),x.get('origin') or scan.get('origin',''),x.get('store',''),x.get('bundle',0),x.get('marketBundle',0),x.get('coupangQuery') or scan.get('coupang_query',''),x.get('sale',0),x.get('unitCost',0),x.get('cost',0),x.get('feeRate',settings.get('fee',11.8)),x.get('fee',0),x.get('ship',0),x.get('other',0),x.get('outputVat',0),x.get('inputVat',0),x.get('vat',0),x.get('profitBeforeIncomeTax',0),x.get('incomeTaxRate',0),x.get('incomeTax',0),x.get('profit',0),x.get('margin',0),x.get('roi',0),x.get('confidence') or scan.get('confidence',''),' · '.join(x.get('designFeatures') or scan.get('design_features') or []),' | '.join(x.get('visibleText') or scan.get('visible_text') or []),' · '.join(x.get('warnings') or scan.get('warnings') or []),x.get('memo','')]
+            scan=x.get('scan') or {}; vals=[parse_dt(x.get('date')),x.get('category') or scan.get('category',''),x.get('brand') or scan.get('brand',''),x.get('productName') or scan.get('product_name') or x.get('name',''),x.get('variant') or scan.get('variant',''),x.get('productCode') or scan.get('product_code',''),x.get('barcode') or scan.get('barcode',''),x.get('volume') or scan.get('volume',''),x.get('count') or scan.get('count',0),x.get('color') or scan.get('color',''),x.get('manufacturer') or scan.get('manufacturer',''),x.get('origin') or scan.get('origin',''),x.get('store',''),x.get('bundle',0),x.get('marketBundle',0),x.get('coupangQuery') or scan.get('coupang_query',''),x.get('keyword',''),(x.get('marketAnalysis') or {}).get('demand_score',0),(x.get('marketAnalysis') or {}).get('competition_score',0),(x.get('marketAnalysis') or {}).get('sourcing_score',0),(x.get('marketAnalysis') or {}).get('turnover',''),(x.get('marketAnalysis') or {}).get('recommendation',''),(x.get('marketAnalysis') or {}).get('confidence',''),' · '.join((x.get('marketAnalysis') or {}).get('evidence') or []),x.get('sale',0),x.get('unitCost',0),x.get('cost',0),x.get('feeRate',settings.get('fee',11.8)),x.get('fee',0),x.get('ship',0),x.get('other',0),x.get('outputVat',0),x.get('inputVat',0),x.get('vat',0),x.get('profitBeforeIncomeTax',0),x.get('incomeTaxRate',0),x.get('incomeTax',0),x.get('profit',0),x.get('margin',0),x.get('roi',0),x.get('confidence') or scan.get('confidence',''),' · '.join(x.get('designFeatures') or scan.get('design_features') or []),' | '.join(x.get('visibleText') or scan.get('visible_text') or []),' · '.join(x.get('warnings') or scan.get('warnings') or []),x.get('memo','')]
             for c,v in enumerate(vals):
-                fmt=dtfmt if c==0 and isinstance(v,datetime) else (integer if c in (8,13,14) else (money if c in (16,17,18,20,21,22,23,24,25,26,28,29) else (percent if c in (19,27,30,31) else text)))
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else (money if headers[c] in ('쿠팡 판매가','개당 소싱가','총 소싱가','쿠팡 수수료','배송비','기타비용','매출 부가세','추정 매입 부가세','예상 납부 부가세','종소세 전 이익','예상 종소세·지방소득세','세후 최종 순이익') else (percent if headers[c] in ('쿠팡 수수료율','종소세·지방소득세율','실마진율','ROI') else (integer if headers[c] in ('인식수량','내 판매 구성','쿠팡 상품 구성','예상 수요점수','경쟁강도점수','AI 소싱지수') else text)))
                 if isinstance(v,(int,float)) and c not in (0,): ws.write_number(r,c,float(v),fmt)
                 elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
                 else: ws.write(r,c,v,fmt)
