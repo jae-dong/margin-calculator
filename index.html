@@ -34,7 +34,7 @@
 .tradegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.capturebox{border:2px dashed #b8c3cf;border-radius:15px;padding:14px;text-align:center;background:#f8fafc}.autofill{background:#edf7ff;color:#0b4f6c;border:1px solid #a5d8ff;display:block}.tiny{font-size:11px;color:#6b7682;line-height:1.5}.batchbox{border:2px solid #183b66;border-radius:17px;padding:14px;background:#f4f8fc}.batchlist{margin-top:8px;font-size:12px;color:#52606d;line-height:1.6}.progress{height:8px;background:#e1e7ee;border-radius:99px;overflow:hidden;margin-top:10px}.progress>div{height:100%;background:#183b66;width:0;transition:width .25s}.scanresult{display:none;margin-top:12px;border:1px solid #cbd8e6;border-radius:15px;padding:13px;background:#f7fbff}.scanresult.show{display:block}.scanhead{font-size:14px;font-weight:900;margin-bottom:8px}.scangrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.scanitem{background:#fff;border:1px solid #e1e8ef;border-radius:11px;padding:9px}.scanitem b{display:block;font-size:10px;color:#647180;margin-bottom:4px}.scanitem span{font-size:13px;font-weight:800;overflow-wrap:anywhere}.scanwide{grid-column:1/-1}@media(max-width:420px){.scangrid{grid-template-columns:1fr}}
 .camera-modal{display:none;position:fixed;inset:0;z-index:5000;background:#000;flex-direction:column}.camera-modal.show{display:flex}.camera-top{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;color:#fff;background:#111}.camera-title{font-weight:900}.camera-close{background:#ffffff22;color:#fff;padding:9px 13px}.camera-video-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}.camera-video{width:100%;height:100%;object-fit:cover}.camera-guide{position:absolute;inset:12%;border:2px solid #ffffffaa;border-radius:18px;pointer-events:none}.camera-bottom{padding:14px 18px calc(18px + env(safe-area-inset-bottom));background:#111;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}.camera-shot{width:72px;height:72px;border-radius:50%;border:6px solid #fff;background:#ddd;padding:0}.camera-hint{color:#fff;font-size:12px;text-align:center;grid-column:1/-1;margin-bottom:10px}.camera-spacer{height:1px}
 </style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v4.0.6</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v4.0.7</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div>
 <section id="m-g" class="modepage active">
@@ -46,9 +46,9 @@
 <div class="card"><h2>자동 소싱 메모</h2><textarea id="gMemo"></textarea><div class="actions"><button class="secondary" onclick="makeMemo()">자동작성</button><button class="primary" onclick="saveMemo()">메모 저장</button></div></div>
 </section>
 <section id="m-s" class="modepage">
-<div class="card"><h2>1단계 · 상품 사진 인식</h2><div class="actions"><button class="secondary" onclick="pick('sPhotoCamera')">박스 라벨 카메라</button><button class="secondary" onclick="pick('sPhotoGallery')">박스 라벨 사진첩</button><button class="secondary" onclick="pick('sPriceCamera')">가격표 카메라</button><button class="secondary" onclick="pick('sPriceGallery')">가격표 사진첩</button></div><input id="sPhotoCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeSneaker(event)"><input id="sPhotoGallery" hidden type="file" accept="image/*" onchange="recognizeSneaker(event)"><input id="sPriceCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeSneakerPrice(event)"><input id="sPriceGallery" hidden type="file" accept="image/*" onchange="recognizeSneakerPrice(event)"><div id="sStatus" class="sub">모델번호·사이즈·가격표 표시 할인가를 자동 인식합니다.</div></div>
+<div class="card"><h2>1단계 · 상품 사진 인식</h2><div class="actions"><button class="secondary" onclick="pick('sPhotoCamera')">박스 라벨 카메라</button><button class="secondary" onclick="pick('sPhotoGallery')">박스 라벨 사진첩</button><button class="secondary" onclick="pick('sPriceCamera')">가격표 카메라</button><button class="secondary" onclick="pick('sPriceGallery')">가격표 사진첩</button></div><input id="sPhotoCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeSneaker(event)"><input id="sPhotoGallery" hidden type="file" accept="image/*" onchange="recognizeSneaker(event)"><input id="sPriceCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeSneakerPrice(event)"><input id="sPriceGallery" hidden type="file" accept="image/*" onchange="recognizeSneakerPrice(event)"><div id="sStatus" class="sub">모델번호·사이즈·가격표 표시 할인가를 자동 인식합니다.</div><div class="actions" style="margin-top:10px"><button id="kreamSearchBtn" class="primary" onclick="openKreamSearch()" disabled>KREAM에서 검색</button></div><div class="tiny">사진 인식이 끝나면 상품코드로 KREAM 검색 화면에 자동 연결합니다. 자동 연결이 차단되면 위 버튼을 누르세요.</div></div>
 
-<div class="card"><h2>2단계 · KREAM 화면 분석</h2><div class="capturebox"><div class="actions"><button class="secondary" onclick="pick('kreamCaptureCamera')">KREAM 화면 카메라</button><button class="primary" onclick="pick('kreamCapturesGallery')">KREAM 캡처 여러 장</button></div><input id="kreamCaptureCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeKreamCaptures(event)"><input id="kreamCapturesGallery" hidden type="file" accept="image/*" multiple onchange="recognizeKreamCaptures(event)"><div class="tiny" style="margin-top:9px">체결 거래와 판매입찰 화면만 추가로 분석할 때 사용합니다.</div></div><div id="kreamCaptureStatus" class="sub">선택한 화면을 합쳐 사이즈·체결 거래·최고/평균/최저 판매가·수요를 자동 판단합니다.</div></div><div class="card"><h2>제품 정보</h2><div class="grid2"><div class="field"><label>브랜드</label><select id="sBrand"><option>나이키</option><option>뉴발란스</option><option>아디다스</option><option>언더아머</option><option>기타</option></select></div><div class="field"><label>모델번호</label><input id="sModel" placeholder="예: U9060GRY" oninput="checkDup()"></div><div class="field"><label>사이즈</label><input id="sSize" type="number" placeholder="예: 250" oninput="calcS();checkDup()"></div><div class="field"><label>아울렛/매장</label><input id="sStore" placeholder="예: 기흥 나이키"></div></div><div id="dupAlert" class="alert"></div><div class="sub">체결 거래와 판매입찰 캡처를 분석해 최고·평균·최저 판매가와 예상 순이익을 자동 계산합니다.</div></div>
+<div class="card"><h2>2단계 · KREAM 화면 분석</h2><div class="capturebox"><div class="actions"><button class="secondary" onclick="pick('kreamCaptureCamera')">KREAM 화면 카메라</button><button class="primary" onclick="pick('kreamCapturesGallery')">KREAM 캡처 여러 장</button></div><input id="kreamCaptureCamera" hidden type="file" accept="image/*" capture="environment" onchange="recognizeKreamCaptures(event)"><input id="kreamCapturesGallery" hidden type="file" accept="image/*" multiple onchange="recognizeKreamCaptures(event)"><div class="tiny" style="margin-top:9px">체결 거래와 판매입찰 화면만 추가로 분석할 때 사용합니다.</div></div><div id="kreamCaptureStatus" class="sub">선택한 화면을 합쳐 사이즈·체결 거래·최고/평균/최저 판매가·수요를 자동 판단합니다.</div></div><div class="card"><h2>제품 정보</h2><div class="grid2"><div class="field"><label>브랜드</label><select id="sBrand"><option>나이키</option><option>뉴발란스</option><option>아디다스</option><option>언더아머</option><option>기타</option></select></div><div class="field"><label>모델번호</label><input id="sModel" placeholder="예: U9060GRY" oninput="checkDup();updateKreamSearchButton()"></div><div class="field"><label>사이즈</label><input id="sSize" type="number" placeholder="예: 250" oninput="calcS();checkDup()"></div><div class="field"><label>아울렛/매장</label><input id="sStore" placeholder="예: 기흥 나이키"></div></div><div id="dupAlert" class="alert"></div><div class="sub">체결 거래와 판매입찰 캡처를 분석해 최고·평균·최저 판매가와 예상 순이익을 자동 계산합니다.</div></div>
 <div class="card"><h2>아울렛 구매가·KREAM 체결 시세</h2><div class="grid2"><div class="field"><label>가격표 표시 할인가</label><input id="sListPrice" type="number" value="169000" oninput="calcDiscount();calcS()"><div class="tiny">가격표에 이미 1차 할인이 적용되어 적힌 실제 판매가입니다.</div></div><div class="field"><label>추가 할인율</label><select id="sDiscount" onchange="toggleCustomDiscount();calcDiscount();calcS()"><option value="0">추가 할인 없음</option><option value="10">추가 10% 할인</option><option value="20">추가 20% 할인</option><option value="30">추가 30% 할인</option><option value="40">추가 40% 할인</option><option value="custom">직접입력</option></select></div><div class="field" id="customDiscountWrap" style="display:none"><label>추가 할인율 직접입력</label><input id="sCustomDiscount" type="number" min="0" max="100" value="0" oninput="calcDiscount();calcS()"></div><div class="field"><label>추가 할인 적용 최종 매입가</label><input id="sBuy" type="number" value="169000" readonly></div><div class="field"><label>KREAM 최고 체결가</label><input id="sHighSale" type="number" placeholder="최근 체결 최고가" oninput="calcS()"></div><div class="field"><label>KREAM 평균 체결가</label><input id="sAvgSale" type="number" placeholder="최근 체결 평균가" oninput="calcS()"></div><div class="field"><label>KREAM 최저 체결가</label><input id="sLowSale" type="number" placeholder="최근 체결 최저가" oninput="calcS()"></div><div class="field"><label>사이즈 수요 자동판단</label><input id="sDemand" value="거래자료 대기" readonly><div id="sDemandReason" class="tiny">체결 거래와 입찰 자료를 분석해 자동으로 판단합니다.</div></div><div class="field"><label>기타비용</label><input id="sOther" type="number" value="0" oninput="calcS()"></div></div><div id="discountInfo" class="alert ok"></div></div><div class="card"><h2>사이즈별 최근 거래 자동분석</h2><div class="tradegrid"><div class="field"><label>거래 1 날짜</label><input id="sTradeDate1" type="date" oninput="calcS()"></div><div class="field"><label>거래 1 금액</label><input id="sTradePrice1" type="number" oninput="calcS()"></div><div class="field"><label>거래 2 날짜</label><input id="sTradeDate2" type="date" oninput="calcS()"></div><div class="field"><label>거래 2 금액</label><input id="sTradePrice2" type="number" oninput="calcS()"></div><div class="field"><label>거래 3 날짜</label><input id="sTradeDate3" type="date" oninput="calcS()"></div><div class="field"><label>거래 3 금액</label><input id="sTradePrice3" type="number" oninput="calcS()"></div><div class="field"><label>거래 4 날짜</label><input id="sTradeDate4" type="date" oninput="calcS()"></div><div class="field"><label>거래 4 금액</label><input id="sTradePrice4" type="number" oninput="calcS()"></div><div class="field"><label>거래 5 날짜</label><input id="sTradeDate5" type="date" oninput="calcS()"></div><div class="field"><label>거래 5 금액</label><input id="sTradePrice5" type="number" oninput="calcS()"></div></div><div id="tradeSummary" class="alert autofill">KREAM 캡처를 올리면 최근 거래 평균·추세·마지막 거래일을 분석합니다.</div></div>
 <div class="card"><h2>KREAM 일반판매 기준 예상 순이익</h2><div class="metrics"><div class="metric"><div class="lab">최고 체결가 순이익</div><div id="sPHigh" class="val">0원</div></div><div class="metric good"><div class="lab">평균 체결가 순이익</div><div id="sPAvg" class="val">0원</div></div><div class="metric"><div class="lab">최저 체결가 순이익</div><div id="sPLow" class="val">0원</div></div></div><div id="sDecision" class="decision review">체결 거래 캡처를 올려주세요.</div><div id="sProfitDetails"></div><div class="actions"><button class="primary" onclick="saveS()">기록 저장</button><button class="secondary" onclick="cartS()">장바구니</button></div></div>
 </section></main>
@@ -308,36 +308,80 @@ function resetKreamAnalysisForNewProduct(){
  if($('tradeSummary'))$('tradeSummary').textContent='새 상품입니다. KREAM 체결 거래 캡처를 올려주세요.';
  if($('kreamCaptureStatus'))$('kreamCaptureStatus').textContent='새 상품의 KREAM 화면을 선택해 주세요.';
 }
+
+function cleanSneakerModel(v){
+ const x=String(v||'').toUpperCase().replace(/[^A-Z0-9-]/g,'');
+ if(!x)return '';
+ if(/^NBPDFS/i.test(x))return '';
+ return x;
+}
+function kreamSearchUrl(model){
+ const q=cleanSneakerModel(model||($('sModel')&&$('sModel').value));
+ return q?'https://kream.co.kr/search?keyword='+encodeURIComponent(q):'https://kream.co.kr/';
+}
+function prepareKreamWindow(){
+ let w=null;
+ try{
+  w=window.open('about:blank','_blank');
+  if(w){w.document.write('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KREAM 연결 중</title><body style="font-family:system-ui;padding:28px"><h2>KREAM 연결 준비 중</h2><p>상품코드를 인식한 뒤 검색 화면으로 이동합니다.</p></body>');w.document.close()}
+ }catch(e){}
+ return w;
+}
+function updateKreamSearchButton(){
+ const b=$('kreamSearchBtn'),q=cleanSneakerModel($('sModel')?.value);
+ if(!b)return;
+ b.disabled=!q;
+ b.textContent=q?`KREAM에서 ${q} 검색`:'KREAM에서 검색';
+}
+function connectKreamAfterRecognition(win){
+ const model=cleanSneakerModel($('sModel')?.value);
+ updateKreamSearchButton();
+ if(!model){if(win)try{win.close()}catch(e){};return false}
+ const url=kreamSearchUrl(model);
+ if(win&&!win.closed){try{win.location.replace(url);return true}catch(e){}}
+ try{window.location.href=url;return true}catch(e){return false}
+}
+function openKreamSearch(){
+ const model=cleanSneakerModel($('sModel')?.value);
+ if(!model)return alert('먼저 상품코드를 인식하거나 입력하세요.');
+ const url=kreamSearchUrl(model);
+ const w=window.open(url,'_blank');
+ if(!w)window.location.href=url;
+}
+
 function checkDup(){const a=$('dupAlert'),m=norm($('sModel').value),z=n('sSize');if(!m){a.className='alert';return}const h=get('sRecords').find(x=>norm(x.model)===m&&(!z||x.size===z));if(!h){a.className='alert';return}a.className='alert warn';a.textContent=`이전에 확인한 제품입니다. 지난 구매가 ${won(h.buy)} · 평균 판매가 순이익 ${won(h.avgProfit||0)}`}
 async function recognizeSneaker(e){
  const input=e.target,f=input.files?.[0];if(!f)return;
+ const kreamWin=prepareKreamWindow();
  resetKreamAnalysisForNewProduct();
  $('sStatus').textContent='새 라벨에서 모델번호와 사이즈를 인식하고 있습니다.';
  try{
   const d=await postImg(f,'/api/recognize-sneaker-label');
-  if(d.brand)$('sBrand').value=d.brand;if(d.model_no)$('sModel').value=d.model_no;if(d.size)$('sSize').value=d.size;
-  $('sStatus').textContent=`인식 완료: ${d.brand||''} ${d.model_no||''} ${d.size||''}`;
-  calcS();checkDup();saveSneakerDraft();
- }catch(x){$('sStatus').textContent='인식 실패: '+x.message}
+  if(d.brand)$('sBrand').value=d.brand;if(d.model_no)$('sModel').value=cleanSneakerModel(d.model_no);if(d.size)$('sSize').value=d.size;
+  $('sStatus').textContent=`인식 완료: ${d.brand||''} ${cleanSneakerModel(d.model_no)||''} ${d.size||''} · KREAM 검색 연결 중`;
+  calcS();checkDup();saveSneakerDraft();updateKreamSearchButton();
+  if(!connectKreamAfterRecognition(kreamWin))$('sStatus').textContent+=' · 자동 연결 실패 시 KREAM 검색 버튼을 누르세요.';
+ }catch(x){if(kreamWin)try{kreamWin.close()}catch(e){};$('sStatus').textContent='인식 실패: '+x.message}
  finally{input.value=''}
 }
 async function recognizeSneakerPrice(e){
  const input=e.target,f=input.files?.[0];if(!f)return;
+ const kreamWin=prepareKreamWindow();
  resetKreamAnalysisForNewProduct();
  $('sStatus').textContent='새 가격표에서 모델번호·사이즈·표시 할인가를 인식하고 있습니다.';
  try{
   const d=await postImg(f,'/api/recognize-sneaker-outlet-tag');
-  if(d.brand)$('sBrand').value=d.brand;if(d.model_no)$('sModel').value=d.model_no;if(d.size)$('sSize').value=d.size;
+  if(d.brand)$('sBrand').value=d.brand;if(d.model_no)$('sModel').value=cleanSneakerModel(d.model_no);if(d.size)$('sSize').value=d.size;
   let msg=[];if(d.sale_price){$('sListPrice').value=d.sale_price;msg.push('가격표 표시 할인가 '+won(d.sale_price))}else if(d.list_price){$('sListPrice').value=d.list_price;msg.push('할인가 구분 불가 · 확인된 가격 '+won(d.list_price))}else{msg.push('가격 확인 필요')}
   if(d.shown_discount_rate)msg.push('가격표 1차 할인 '+Number(d.shown_discount_rate)+'% 확인');msg.push('추가 할인 '+discountRate()+'% 적용');
   calcDiscount();calcS();checkDup();saveSneakerDraft();
-  $('sStatus').textContent=`가격표 인식 완료: ${d.brand||''} ${d.model_no||''} ${d.size||''} · ${msg.join(' · ')} · 신뢰도 ${d.confidence||'보통'}`;
- }catch(x){$('sStatus').textContent='가격표 인식 실패: '+x.message}
+  $('sStatus').textContent=`가격표 인식 완료: ${d.brand||''} ${cleanSneakerModel(d.model_no)||''} ${d.size||''} · ${msg.join(' · ')} · 신뢰도 ${d.confidence||'보통'} · KREAM 검색 연결 중`;updateKreamSearchButton();if(!connectKreamAfterRecognition(kreamWin))$('sStatus').textContent+=' · 자동 연결 실패 시 KREAM 검색 버튼을 누르세요.';
+ }catch(x){if(kreamWin)try{kreamWin.close()}catch(e){};$('sStatus').textContent='가격표 인식 실패: '+x.message}
  finally{input.value=''}
 }
 function del(k,id){set(k,get(k).filter(x=>x.id!==id));renderRecords()}
 function renderRecords(){const g=get('gRecords'),s=get('sRecords');$('gRecords').innerHTML=g.length?g.slice(0,50).map(x=>`<div class="record"><b>${esc(x.name)}</b><div class="meta">${new Date(x.date).toLocaleString('ko-KR')} · ${esc(x.store)}<br>판매가 ${won(x.sale)} · 소싱가 ${won(x.unitCost)} · 순이익 ${won(x.profit)} · 마진 ${x.margin.toFixed(1)}%</div><button class="danger" onclick="del('gRecords',${x.id})">삭제</button></div>`).join(''):'<div class="empty">기록이 없습니다.</div>';$('sRecords').innerHTML=s.length?s.slice(0,50).map(x=>`<div class="record"><b>${esc(x.brand)} ${esc(x.model)} ${x.size||''}</b><div class="meta">${new Date(x.date).toLocaleString('ko-KR')} · ${esc(x.store||'매장 미입력')}<br>구매가 ${won(x.buy)} · 최고/평균/최저 ${won(x.highSale||0)} / ${won(x.avgSale||0)} / ${won(x.lowSale||0)} · 평균가 순이익 ${won(x.avgProfit||0)}</div><button class="danger" onclick="del('sRecords',${x.id})">삭제</button></div>`).join(''):'<div class="empty">기록이 없습니다.</div>'}
 function renderCart(){const a=get('cart');$('cartList').innerHTML=a.length?a.map((x,i)=>`<div class="record"><b>${esc(x.name)}</b><div class="meta">${x.type} · 수량 ${x.qty}개 · 총매입 ${won(Number(x.unitCost||x.buy)*x.qty)} · 예상 총이익 ${won(Number(x.profit||0)*x.qty)}</div><button class="danger" onclick="rmCart(${i})">삭제</button></div>`).join(''):'<div class="empty">장바구니가 비어 있습니다.</div>'}function rmCart(i){const a=get('cart');a.splice(i,1);set('cart',a);renderCart()}function clearCart(){if(confirm('비울까요?')){set('cart',[]);renderCart()}}
 function renderReport(){const today=new Date().toDateString(),all=[...get('gRecords').map(x=>({...x,label:x.name})),...get('sRecords').map(x=>({...x,label:`${x.brand} ${x.model} ${x.size}`,profit:x.avgProfit||0,margin:x.avgMargin||0,unitCost:x.buy}))],top=all.filter(x=>new Date(x.date).toDateString()===today).sort((a,b)=>b.profit-a.profit).slice(0,10);$('top10').innerHTML=top.length?top.map((x,i)=>`<div class="record"><b>${i+1}. ${esc(x.label)}</b><div class="meta">순이익 ${won(x.profit)} · 마진 ${Number(x.margin||0).toFixed(1)}%</div></div>`).join(''):'<div class="empty">오늘 기록이 없습니다.</div>';const p=new Date().toISOString().slice(0,7),m=all.filter(x=>String(x.date).startsWith(p)),c=get('cart'),cost=c.reduce((s,x)=>s+Number(x.unitCost||x.buy||0)*x.qty,0),profit=c.reduce((s,x)=>s+Number(x.profit||0)*x.qty,0);$('rCount').textContent=m.length+'개';$('rCost').textContent=won(cost);$('rProfit').textContent=won(profit);const sm={};m.forEach(x=>sm[x.store||'미지정']=(sm[x.store||'미지정']||0)+Number(x.profit||0));const b=Object.entries(sm).sort((a,b)=>b[1]-a[1])[0];$('rBest').textContent=b?`이번 달 최고 성과 매장: ${b[0]} · ${won(b[1])}`:'이번 달 기록이 없습니다.'}
-loadSettings();restoreSneakerDraft();toggleCustomDiscount();calcDiscount();calcG();calcS();validateComp();renderRecords();renderCart();renderReport();mode(localStorage.getItem('lastSourcingMode')==='s'?'s':'g');if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+loadSettings();restoreSneakerDraft();toggleCustomDiscount();calcDiscount();calcG();calcS();validateComp();renderRecords();renderCart();renderReport();mode(localStorage.getItem('lastSourcingMode')==='s'?'s':'g');updateKreamSearchButton();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script></body></html>
