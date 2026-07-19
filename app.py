@@ -1,7 +1,11 @@
 import base64,json,os,re
-from flask import Flask,jsonify,request,send_from_directory
+from io import BytesIO
+from datetime import datetime
+from flask import Flask,jsonify,request,send_from_directory,send_file
+import xlsxwriter
 from openai import OpenAI
 app=Flask(__name__,static_folder='.')
+app.config['MAX_CONTENT_LENGTH']=24*1024*1024
 ALLOWED={'image/jpeg','image/png','image/webp'}
 def cli():
     k=os.getenv('OPENAI_API_KEY')
@@ -129,6 +133,21 @@ def vision(prompt,tokens=500,multiple=False):
         content.append({'type':'input_image','image_url':url})
     r=cli().responses.create(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),input=[{'role':'user','content':content}],max_output_tokens=tokens)
     return parse(r.output_text),None
+@app.errorhandler(413)
+def too_large(_):
+    if request.path.startswith('/api/'): return jsonify(error='사진 용량이 너무 큽니다. 최신 앱은 전송 전 자동 압축합니다. 새로고침 후 다시 시도하세요.'),413
+    return '파일 용량이 너무 큽니다.',413
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'): return jsonify(error='분석 API를 찾지 못했습니다. 최신 버전이 정상 배포됐는지 확인하세요.'),404
+    return send_from_directory('.', 'index.html')
+
+@app.errorhandler(500)
+def server_error(e):
+    if request.path.startswith('/api/'): return jsonify(error='분석 서버 내부 오류가 발생했습니다. 잠시 후 다시 시도하세요.'),500
+    return '서버 오류',500
+
 @app.get('/')
 def home():return send_from_directory('.','index.html')
 @app.get('/<path:p>')
@@ -307,6 +326,103 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
         return jsonify(d)
     except Exception as x:
         return jsonify(error=f'KREAM 링크 분석 오류: {x}'),502
+
+
+
+@app.post('/api/export-excel')
+def export_excel():
+    """브라우저 localStorage의 저장 데이터를 실제 .xlsx 파일로 내보낸다."""
+    try:
+        body=request.get_json(silent=True) or {}
+        general=(body.get('general') or [])[:2000]
+        sneakers=(body.get('sneakers') or [])[:2000]
+        cart=(body.get('cart') or [])[:3000]
+        settings=body.get('settings') or {}
+
+        out=BytesIO()
+        wb=xlsxwriter.Workbook(out, {'in_memory': True})
+        title=wb.add_format({'bold':True,'font_size':16,'font_color':'#173f70'})
+        head=wb.add_format({'bold':True,'bg_color':'#173f70','font_color':'#FFFFFF','border':1,'align':'center','valign':'vcenter'})
+        text=wb.add_format({'border':1,'valign':'top'})
+        integer=wb.add_format({'border':1,'num_format':'#,##0','valign':'top'})
+        percent=wb.add_format({'border':1,'num_format':'0.0"%"','valign':'top'})
+        dtfmt=wb.add_format({'border':1,'num_format':'yyyy-mm-dd hh:mm','valign':'top'})
+        money=wb.add_format({'border':1,'num_format':'#,##0"원"','valign':'top'})
+        note=wb.add_format({'font_color':'#666666','italic':True})
+
+        def parse_dt(value):
+            try:
+                return datetime.fromisoformat(str(value).replace('Z','+00:00')).replace(tzinfo=None)
+            except Exception:
+                return str(value or '')
+
+        # 요약
+        ws=wb.add_worksheet('요약')
+        ws.write('A1','올데이픽 AI 소싱 저장 데이터',title)
+        ws.write('A3','구분',head); ws.write('B3','건수',head)
+        ws.write('A4','일반상품 기록',text); ws.write_number('B4',len(general),integer)
+        ws.write('A5','스니커즈 기록',text); ws.write_number('B5',len(sneakers),integer)
+        ws.write('A6','장바구니',text); ws.write_number('B6',len(cart),integer)
+        ws.write('A8','다운로드 일시',head); ws.write_datetime('B8',datetime.now(),dtfmt)
+        ws.write('A10','세금 계산 기준',head); ws.write('B10','설정값',head)
+        labels=[('직장 연봉',settings.get('annualSalary',100000000),'money'),('연 매출',settings.get('annualSales',500000000),'money'),('사업 마진율',settings.get('businessMargin',25),'percent'),('종소세·지방소득세율',settings.get('incomeTaxRate',42),'percent'),('쿠팡 수수료율',settings.get('fee',11.8),'percent'),('배송비',settings.get('ship',4000),'money')]
+        for r,(lab,val,kind) in enumerate(labels,11):
+            ws.write(r-1,0,lab,text)
+            fmt=money if kind=='money' else percent
+            ws.write_number(r-1,1,float(val or 0),fmt)
+        ws.write('A19','※ 앱에 저장된 예상 계산값이며 실제 신고세액과 다를 수 있습니다.',note)
+        ws.set_column('A:A',24); ws.set_column('B:B',20)
+
+        # 일반상품 기록
+        ws=wb.add_worksheet('일반상품 기록')
+        headers=['저장일시','상품명','소싱매장','묶음수량','판매가','개당 소싱가','총 소싱가','쿠팡 수수료','배송비','기타비용','예상 납부 부가세','종소세 전 이익','예상 종소세·지방소득세','세율','세후 최종 순이익','실마진율','메모']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        for r,x in enumerate(general,1):
+            vals=[parse_dt(x.get('date')),x.get('name',''),x.get('store',''),x.get('bundle',0),x.get('sale',0),x.get('unitCost',0),x.get('cost',0),x.get('fee',0),x.get('ship',0),x.get('other',0),x.get('vat',0),x.get('profitBeforeIncomeTax',0),x.get('incomeTax',0),x.get('incomeTaxRate',0),x.get('profit',0),x.get('margin',0),x.get('memo','')]
+            for c,v in enumerate(vals):
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else (integer if c==3 else (money if c in (4,5,6,7,8,9,10,11,12,14) else (percent if c in (13,15) else text)))
+                if isinstance(v,(int,float)) and c not in (0,): ws.write_number(r,c,float(v),fmt)
+                elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
+                else: ws.write(r,c,v,fmt)
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(general)),len(headers)-1)
+        ws.set_column(0,0,18); ws.set_column(1,2,24); ws.set_column(3,15,15); ws.set_column(16,16,34)
+
+        # 스니커즈 기록
+        ws=wb.add_worksheet('스니커즈 기록')
+        headers=['저장일시','브랜드','모델번호','사이즈','소싱매장','정상가','할인율','최종 매입가','최고 체결가','평균 체결가','최저 체결가','수요','최고가 순이익','평균가 순이익','최저가 순이익','최고가 마진율','평균가 마진율','최저가 마진율','표시 거래수','추세','최근거래 경과일']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        for r,x in enumerate(sneakers,1):
+            ta=x.get('tradeAnalysis') or {}
+            vals=[parse_dt(x.get('date')),x.get('brand',''),x.get('model',''),x.get('size',0),x.get('store',''),x.get('listPrice',0),x.get('discount',0),x.get('buy',0),x.get('highSale',0),x.get('avgSale',0),x.get('lowSale',0),x.get('demand',''),x.get('highProfit',0),x.get('avgProfit',0),x.get('lowProfit',0),x.get('highMargin',0),x.get('avgMargin',0),x.get('lowMargin',0),ta.get('count',0),ta.get('trend',''),ta.get('days',0)]
+            for c,v in enumerate(vals):
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else (percent if c in (6,15,16,17) else (money if c in (5,7,8,9,10,12,13,14) else (integer if c in (3,18,20) else text)))
+                if isinstance(v,(int,float)) and c!=0: ws.write_number(r,c,float(v),fmt)
+                elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
+                else: ws.write(r,c,v,fmt)
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(sneakers)),len(headers)-1)
+        ws.set_column(0,0,18); ws.set_column(1,4,18); ws.set_column(5,20,15)
+
+        # 장바구니
+        ws=wb.add_worksheet('장바구니')
+        headers=['담은 순서','구분','상품명','소싱매장','수량','개당 매입가','총 매입액','개당 예상 순이익','예상 총이익','판매가/평균체결가','저장일시']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        for r,x in enumerate(cart,1):
+            qty=float(x.get('qty') or 0); unit=float(x.get('unitCost') or x.get('buy') or 0); profit=float(x.get('profit') or 0)
+            sale=float(x.get('sale') or x.get('avgSale') or 0)
+            vals=[r,x.get('type',''),x.get('name',''),x.get('store',''),qty,unit,qty*unit,profit,qty*profit,sale,parse_dt(x.get('date'))]
+            for c,v in enumerate(vals):
+                fmt=dtfmt if c==10 and isinstance(v,datetime) else (money if c in (5,6,7,8,9) else (integer if c in (0,4) else text))
+                if isinstance(v,(int,float)): ws.write_number(r,c,float(v),fmt)
+                elif isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
+                else: ws.write(r,c,v,fmt)
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(cart)),len(headers)-1)
+        ws.set_column(0,1,12); ws.set_column(2,3,28); ws.set_column(4,9,16); ws.set_column(10,10,18)
+
+        wb.close(); out.seek(0)
+        filename='올데이픽_소싱데이터_'+datetime.now().strftime('%Y%m%d_%H%M')+'.xlsx'
+        return send_file(out,as_attachment=True,download_name=filename,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as x:
+        return jsonify(error=f'엑셀 생성 오류: {x}'),500
 
 @app.get('/health')
 def health():return jsonify(ok=True)
