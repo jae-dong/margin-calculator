@@ -151,6 +151,20 @@ GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다
 설명 없이 JSON 하나만 반환:
 {"category":"식품|생활용품|뷰티|완구|반려동물|유아용품|의류|신발|가전|기타","brand":"","product_name":"","variant":"","product_code":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","barcode":"","manufacturer":"","origin":"","volume":"","count":0,"size_mm":0,"us_size":"","color":"","design_features":[""],"list_price":0,"price":0,"promotion":"","coupang_query":"","fallback_query":"","visible_text":[""],"confidence":"높음|보통|낮음","warnings":[""]}'''
 
+
+@app.post('/api/recognize-general-universal')
+def general_universal():
+    try:
+        files=request.files.getlist('images')
+        multiple=bool(files)
+        prompt=GENERAL_PRODUCT_PROMPT + """
+
+추가 지시: 입력 사진은 상품 본체, 포장 앞면/뒷면, 매장 가격표, 바코드, 신발 박스 라벨 중 하나 또는 여러 장이다. 사진 종류를 자동 분류하고 여러 장이면 같은 상품의 정보로 합쳐라. 가격표가 있으면 이미 할인 적용된 실제 표시 결제가격을 price에 넣어라. 서로 충돌하는 값은 임의로 확정하지 말고 warnings에 적어라. 신발은 내부 관리번호가 아니라 실제 브랜드 스타일코드를 product_code로 선택한다.
+"""
+        d,e=vision(prompt,1400,multiple=multiple)
+        return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
+    except Exception as x:return jsonify(error=f'일반상품 통합 인식 오류: {x}'),502
+
 @app.post('/api/recognize-product')
 def product():
     try:
