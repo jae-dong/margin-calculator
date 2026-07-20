@@ -1,4 +1,5 @@
 import base64,json,os,re
+import json5
 from io import BytesIO
 from datetime import datetime
 from flask import Flask,jsonify,request,send_from_directory,send_file
@@ -12,9 +13,37 @@ def cli():
     if not k: raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')
     return OpenAI(api_key=k, timeout=38.0, max_retries=1)
 def parse(t):
-    m=re.search(r'\{.*\}',(t or '').strip(),re.S)
-    if not m: raise ValueError('JSON 응답을 찾지 못했습니다.')
-    return json.loads(m.group(0))
+    raw=(t or '').strip()
+    raw=re.sub(r'^```(?:json)?\s*|\s*```$','',raw,flags=re.I|re.S).strip()
+    start=raw.find('{')
+    if start<0: raise ValueError('JSON 응답을 찾지 못했습니다.')
+    raw=raw[start:]
+    # 먼저 표준 JSON과 JSON5를 순서대로 시도한다.
+    for loader in (json.loads,json5.loads):
+        try:return loader(raw)
+        except Exception:pass
+    # 모델이 줄바꿈 사이 쉼표를 빠뜨리거나 끝부분을 조금 잘랐을 때 자동 복구한다.
+    repaired=raw
+    repaired=re.sub(r',\s*([}\]])',r'\1',repaired)
+    repaired=re.sub(r'([0-9truefalsenull"\]\}])\s*\n\s*(")',r'\1,\n\2',repaired,flags=re.I)
+    repaired=re.sub(r'(}\s*)({)',r'\1,\2',repaired)
+    # 문자열 내부가 아닌 괄호를 세어 잘린 응답의 닫는 괄호를 보충한다.
+    in_str=False;esc=False;stack=[]
+    for ch in repaired:
+        if in_str:
+            if esc:esc=False
+            elif ch=='\\':esc=True
+            elif ch=='"':in_str=False
+        else:
+            if ch=='"':in_str=True
+            elif ch in '[{':stack.append(ch)
+            elif ch in ']}' and stack:stack.pop()
+    if in_str:repaired+='"'
+    repaired+=''.join('}' if ch=='{' else ']' for ch in reversed(stack))
+    for loader in (json.loads,json5.loads):
+        try:return loader(repaired)
+        except Exception:pass
+    raise ValueError('AI 응답 JSON 자동 복구에 실패했습니다.')
 
 def _clean_code(v):
     return re.sub(r'[^A-Z0-9-]', '', str(v or '').upper())
@@ -167,7 +196,7 @@ GENERAL_PRODUCT_PROMPT = '''일반상품 소싱용 사진을 정밀 분석한다
 8. 가격표가 보이면 이미 할인 적용되어 실제 결제할 표시가격을 price에 넣고, 정상가는 list_price에 넣는다. 가격표가 없으면 0으로 둔다.
 9. 쿠팡 검색에 가장 적합한 짧고 정확한 검색어를 coupang_query에 만든다. 브랜드 + 상품명 + 모델번호(있을 때) + 용량/수량 순으로 구성하고, 광고문구·가격·바코드는 넣지 않는다. 상품명이 불명확할 때만 바코드를 fallback_query에 넣는다.
 
-설명 없이 JSON 하나만 반환:
+설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
 {"category":"식품|생활용품|뷰티|완구|반려동물|유아용품|의류|신발|가전|기타","brand":"","product_name":"","variant":"","product_code":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","barcode":"","manufacturer":"","origin":"","volume":"","count":0,"size_mm":0,"us_size":"","color":"","design_features":[""],"list_price":0,"price":0,"promotion":"","coupang_query":"","fallback_query":"","visible_text":[""],"confidence":"높음|보통|낮음","warnings":[""]}'''
 
 
@@ -215,7 +244,7 @@ def sneaker():
 5. OCR 문자 I/1, O/0를 임의로 바꾸지 말고 라벨 글자를 그대로 유지한다.
 6. 모델번호 후보를 위치와 함께 model_candidates에 모두 반환한다. 바코드 아래 후보는 role을 barcode_text로 표시한다.
 
-설명 없이 JSON 하나만 반환:
+설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
 {"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","product_name":"","size":0,"us_size":"","color":"","barcode":"","confidence":"높음|보통|낮음"}'''
         d,e=vision(prompt,900)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
@@ -225,7 +254,7 @@ def sneaker():
 @app.post('/api/recognize-sneaker-batch')
 def sneaker_batch():
     try:
-        prompt='여러 장의 사진을 하나의 스니커즈 소싱 건으로 통합 분석한다. 사진들은 신발 박스 라벨, 아울렛 가격표, KREAM 체결 거래, 판매입찰, 구매입찰 화면이 섞여 있을 수 있다. 먼저 각 사진 유형을 분류한 뒤 같은 상품·같은 사이즈의 정보만 합친다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다.\n\n모델번호 규칙: 브랜드 스타일코드를 최우선으로 선택한다. 바코드 아래 긴 문자열·EAN·UPC·내부 물류번호는 모델번호가 아니다. NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 있으면 model_no는 U9060ECA, internal_code는 NBPDFS193I, barcode는 NBPDFS193I39240이다.\n사이즈 규칙: 한국/JP mm 220~320을 우선하고 US 사이즈와 혼동하지 않는다.\n가격표 규칙: 가격표에 이미 할인 적용되어 크게 표시된 현재 판매가를 sale_price에 넣는다. 정상가는 list_price다. 가격표의 기존 할인율은 shown_discount_rate이며 사용자의 추가 할인율과 합산하지 않는다.\nKREAM 규칙: 실제 체결 거래만 trades에 넣고 날짜는 YYYY-MM-DD, 가격은 원 단위 정수로 한다. 판매입찰은 lowest_ask, 구매입찰은 highest_bid로 분리한다. 중복 체결은 제거하고 최신순 최대 10건으로 반환한다.\n서로 다른 모델이 섞이면 가장 많은 사진에서 일치하는 모델을 대표로 선택하고 conflicts에 경고를 넣는다.\n설명 없이 JSON 하나만 반환:\n{"image_types":["박스라벨","가격표","체결거래","판매입찰","구매입찰"],"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[],"internal_code":"","barcode":"","product_name":"","color":"","size":0,"us_size":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}'
+        prompt='여러 장의 사진을 하나의 스니커즈 소싱 건으로 통합 분석한다. 사진들은 신발 박스 라벨, 아울렛 가격표, KREAM 체결 거래, 판매입찰, 구매입찰 화면이 섞여 있을 수 있다. 먼저 각 사진 유형을 분류한 뒤 같은 상품·같은 사이즈의 정보만 합친다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다.\n\n모델번호 규칙: 브랜드 스타일코드를 최우선으로 선택한다. 바코드 아래 긴 문자열·EAN·UPC·내부 물류번호는 모델번호가 아니다. NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 있으면 model_no는 U9060ECA, internal_code는 NBPDFS193I, barcode는 NBPDFS193I39240이다.\n사이즈 규칙: 한국/JP mm 220~320을 우선하고 US 사이즈와 혼동하지 않는다.\n가격표 규칙: 가격표에 이미 할인 적용되어 크게 표시된 현재 판매가를 sale_price에 넣는다. 정상가는 list_price다. 가격표의 기존 할인율은 shown_discount_rate이며 사용자의 추가 할인율과 합산하지 않는다.\nKREAM 규칙: 실제 체결 거래만 trades에 넣고 날짜는 YYYY-MM-DD, 가격은 원 단위 정수로 한다. 판매입찰은 lowest_ask, 구매입찰은 highest_bid로 분리한다. 중복 체결은 제거하고 최신순 최대 10건으로 반환한다.\n서로 다른 모델이 섞이면 가장 많은 사진에서 일치하는 모델을 대표로 선택하고 conflicts에 경고를 넣는다.\n설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:\n{"image_types":["박스라벨","가격표","체결거래","판매입찰","구매입찰"],"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[],"internal_code":"","barcode":"","product_name":"","color":"","size":0,"us_size":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}'
         d,e=vision(prompt,1300,multiple=True)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'통합 사진 분석 오류: {x}'),502
@@ -236,13 +265,13 @@ def kream_captures():
         scope=str(request.form.get('scope','auto') or 'auto').lower()
         fast=str(request.form.get('fast','0'))=='1'
         scope_note={'all':'모든 옵션 화면이다. 보이는 사이즈를 각각 분리한다.','single':'단일 사이즈 화면이다. 해당 사이즈만 반환한다.'}.get(scope,'화면을 보고 모든 옵션 또는 단일 사이즈를 판단한다.')
-        prompt=f"""KREAM 스크린샷 1~2장을 빠르게 읽는다. {scope_note}
+        prompt=f"""KREAM 앱의 체결거래 또는 판매입찰 스크린샷 1~2장을 읽는다. {scope_note}
 화면에 실제 보이는 값만 추출하고 추측하지 않는다. 체결거래와 판매입찰을 혼동하지 않는다.
 각 사이즈별로 사이즈(mm), 보이는 체결 건수, 최근가, 평균가, 최고가, 최저가, 최근 거래일, 판매입찰 최저가, 구매입찰 최고가를 반환한다.
 단일 사이즈면 sizes는 한 행만 반환하고 comparison_note에 '단일옵션으로 사이즈 간 비교 불가'를 넣는다.
-날짜 YYYY-MM-DD, 가격 원 단위 정수. 설명 없이 JSON 하나만 반환:
+날짜 YYYY-MM-DD, 가격 원 단위 정수. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
 {{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":[],"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}"""
-        d,e=vision(prompt,700 if fast else 900,multiple=True)
+        d,e=vision(prompt,850 if fast else 1100,multiple=True)
         if e:return jsonify(error=e[0]),e[1]
         d=dict(d or {});sizes=[]
         for row in d.get('sizes') or []:
@@ -264,7 +293,9 @@ def kream_captures():
         d['analysis_mode']='all' if len(sizes)>1 else 'single'
         if d['analysis_mode']=='single' and not d.get('comparison_note'):d['comparison_note']='단일옵션으로 사이즈 간 비교 불가'
         return jsonify(d)
-    except Exception as x:return jsonify(error=f'KREAM 캡처 인식 오류: {x}'),502
+    except Exception as x:
+        app.logger.warning('KREAM capture parse/vision failure: %s',x)
+        return jsonify(error='KREAM 화면의 글자를 완전히 읽지 못했습니다. 화면 전체가 보이도록 다시 캡처해 주세요.'),502
 
 @app.post('/api/recognize-sneaker-outlet-tag')
 def sneaker_outlet_tag():
@@ -332,7 +363,7 @@ def analyze_market_keyword():
 
 참고 관점은 네이버 데이터랩 쇼핑인사이트, 아이템스카우트, 판다랭크, 셀러라이프(현 셀록홈즈) 같은 키워드 도구가 사용하는 일반적인 지표인 검색 관심도, 상품수/판매자수, 리뷰 집중도, 브랜드 강도, 가격경쟁, 계절성이다. 해당 서비스의 로그인·유료·비공개 수치를 우회하거나 복제하지 않는다. 공개 페이지에서 정확한 월간검색량을 확인할 수 없으면 숫자를 만들지 말고 exact_search_volume_available=false로 한다.
 
-수요점수와 경쟁점수는 0~100. 소싱지수는 현재 마진율/ROI도 반영하되 수요가 높고 경쟁이 낮을수록 높다. 근거가 약하면 confidence를 낮음으로 표시한다. 설명 없이 JSON 하나만 반환:
+수요점수와 경쟁점수는 0~100. 소싱지수는 현재 마진율/ROI도 반영하되 수요가 높고 경쟁이 낮을수록 높다. 근거가 약하면 confidence를 낮음으로 표시한다. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
 {{"keyword":"","demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","exact_search_volume_available":false,"monthly_search_volume":0,"data_scope":"공개 웹 기반 AI 추정","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
         r=cli().responses.create(model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),tools=[{'type':'web_search_preview'}],input=prompt,max_output_tokens=900)
         d=parse(r.output_text)

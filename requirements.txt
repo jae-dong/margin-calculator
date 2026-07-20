@@ -2,3 +2,5 @@ Flask==3.1.1
 gunicorn==23.0.0
 openai==1.97.1
 xlsxwriter==3.2.5
+
+json5==0.12.0
