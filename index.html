@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.1.2</title><style>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.1.3</title><style>
 :root{--n:#1657a6;--n2:#0d3f7a;--sky:#eaf5ff;--mint:#e8fbf5;--bg:#f7faff;--line:#d7e4f2;--g:#087a55;--r:#c73545;--o:#b76500;--purple:#7357c7}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,'Noto Sans KR',sans-serif;color:#111}.app{max-width:760px;margin:auto;padding:14px 12px 165px}.hero{background:linear-gradient(135deg,#102a48,var(--n));color:#fff;border-radius:22px;padding:22px}.hero h1{margin:0 0 8px;font-size:25px}.hero p{margin:0;font-size:13px;font-weight:700}.ver{display:inline-block;margin-top:9px;padding:4px 9px;border-radius:999px;background:#ffffff22;font-size:11px;font-weight:900}.tabs,.modes,.actions,.grid2,.metrics{display:grid;gap:9px}.tabs{grid-template-columns:repeat(5,1fr);margin:12px 0}.modes{grid-template-columns:1fr 1fr}.actions,.grid2{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(3,1fr)}button{border:0;border-radius:13px;padding:12px;font-weight:900;cursor:pointer}.tab,.mode,.secondary{background:#e7ebf1;color:#1e2a36}.tab.active,.mode.active,.primary{background:var(--n);color:#fff}.danger{background:#fdeaea;color:var(--r)}.page,.modepage{display:none}.page.active,.modepage.active{display:block}#m-g:not(.active),#m-s:not(.active){display:none!important}.card{background:#fff;border-radius:19px;padding:17px;margin:13px 0;box-shadow:0 7px 22px #00000010}.card h2{font-size:18px;margin:0 0 14px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:900;margin-bottom:7px}input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:13px;font:inherit}textarea{min-height:110px}.metric{background:#f0f3f7;border-radius:15px;padding:13px 7px;text-align:center}.metric.good{background:#eef9f1;border:1px solid #a7dcb4}.lab{font-size:11px;font-weight:900;color:#5d6874}.val{font-size:21px;font-weight:900;margin-top:6px}.decision,.alert{padding:14px;border-radius:14px;font-weight:900;line-height:1.5;margin-top:11px}.buy,.ok{background:#eaf7ef;color:var(--g);border:1px solid #b7e1c2}.review,.warn{background:#fff4e5;color:var(--o);border:1px solid #ffd8a8}.stop{background:#fff0f0;color:var(--r);border:1px solid #ffc9c9}.alert{display:none;font-size:13px}.alert.ok,.alert.warn{display:block}.sub,.meta{font-size:12px;color:#66717d;line-height:1.55;white-space:pre-wrap;margin-top:7px}.record{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;background:#fbfcfd}.record.clickable{cursor:pointer;transition:.15s}.record.clickable:active{transform:scale(.99);background:#eef6ff}.record .openhint{font-size:11px;color:#1657a6;font-weight:900;margin-top:7px}.record-layout{display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;align-items:start}.record-thumb{width:82px;height:82px;border-radius:13px;object-fit:cover;background:#eef3f8;border:1px solid #d7e4f2}.record-thumb.empty{display:flex;align-items:center;justify-content:center;font-size:28px;color:#8b98a6}.record-body{min-width:0}.record-body b{display:block;overflow-wrap:anywhere}@media(max-width:390px){.record-layout{grid-template-columns:70px minmax(0,1fr)}.record-thumb{width:70px;height:70px}}.empty{text-align:center;color:#7d8792;padding:20px}.sticky{position:fixed;z-index:999;bottom:0;left:0;right:0;background:#fffffff2;border-top:1px solid var(--line);padding:8px}.sticky>div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:7px}.quick button{padding:8px 3px;font-size:12px}@media(max-width:520px){
  html,body{width:100%;max-width:100%;overflow-x:hidden}
  body{padding-top:env(safe-area-inset-top)}
@@ -67,7 +67,7 @@ button{transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}butt
 .market-working{color:#d97706}.market-success{color:#0f9f6e}.market-failure{color:#dc2626}
 @media(max-width:480px){.market-grid{grid-template-columns:1fr 1fr}.market-tile .v{font-size:21px}}
 </style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v5.1.2</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v5.1.3</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div>
 <section id="m-g" class="modepage active">
@@ -176,24 +176,22 @@ async function postImg(file,url){const f=new FormData();f.append('image',await o
 async function postImgs(files,url,extra={},imageOptions={}){const f=new FormData();const maxSide=imageOptions.maxSide||1800,quality=imageOptions.quality??.84,maxFiles=imageOptions.maxFiles||8;const selected=[...files].slice(0,maxFiles);const optimized=await Promise.all(selected.map(x=>optimizeImage(x,maxSide,quality)));optimized.forEach(x=>f.append('images',x));Object.entries(extra).forEach(([k,v])=>f.append(k,v));const r=await fetch(url,{method:'POST',body:f,headers:{'X-Requested-With':'XMLHttpRequest'}});return readJsonResponse(r,'다중 사진 분석')}
 function mergeKreamResults(results){const out={analysis_mode:'single',model_no:'',product_name:'',capture_types:[],sizes:[],comparison_note:'',visible_trade_count:0,conflicts:[],confidence:'보통'};const map=new Map();for(const d of results.filter(Boolean)){out.model_no=out.model_no||d.model_no||'';out.product_name=out.product_name||d.product_name||'';out.capture_types.push(...(d.capture_types||[]));out.conflicts.push(...(d.conflicts||[]));out.visible_trade_count+=Number(d.visible_trade_count||0);for(const row of d.sizes||[]){const key=String(row.size||'unknown');const old=map.get(key)||{...row,trades:[]};old.trade_count=Math.max(Number(old.trade_count||0),Number(row.trade_count||0));for(const k of ['recent_price','avg_price','high_price','low_price','lowest_ask','highest_bid'])if(Number(row[k]||0))old[k]=Number(row[k]);old.recent_date=row.recent_date||old.recent_date||'';old.days_since_last_trade=Math.min(Number(old.days_since_last_trade??999),Number(row.days_since_last_trade??999));old.demand=row.demand||old.demand;old.recommendation_reason=row.recommendation_reason||old.recommendation_reason;old.trades=[...(old.trades||[]),...(row.trades||[])].filter((x,i,a)=>a.findIndex(y=>y.date===x.date&&Number(y.price)===Number(x.price))===i).slice(0,20);map.set(key,old)}}out.sizes=[...map.values()].filter(x=>Number(x.size||0)>0);out.analysis_mode=out.sizes.length>1?'all':'single';out.capture_types=[...new Set(out.capture_types)];out.conflicts=[...new Set(out.conflicts)];if(out.analysis_mode==='single')out.comparison_note='단일옵션으로 사이즈 간 비교 불가';return out}
 async function analyzeKreamRobust(files,scope,onProgress){
- const list=[...files].slice(0,6);
+ const list=[...files].slice(0,2);
  if(!list.length)throw new Error('분석할 사진이 없습니다.');
- // 여러 장을 한 요청에 몰아넣으면 무료 서버에서 시간초과가 잦으므로 각 장을 가볍게 병렬 분석한 뒤 합칩니다.
- const jobs=list.map(async(file,index)=>{
+ onProgress?.(0,list.length,true);
+ try{
+  const d=await postImgs(list,'/api/recognize-kream-captures',{scope},{maxSide:1280,quality:.72,maxFiles:2});
+  onProgress?.(list.length,list.length,true);
+  if(d && (Array.isArray(d.sizes)?d.sizes.length:Object.keys(d).length))return d;
+ }catch(firstError){
+  // 서버가 잠시 불안정할 때 한 번만 더 가볍게 재시도합니다.
+  await new Promise(r=>setTimeout(r,450));
   try{
-   const d=await postImgs([file],'/api/recognize-kream-captures',{scope},{maxSide:1050,quality:.64,maxFiles:1});
-   onProgress?.(index+1,list.length,true);
+   const d=await postImgs(list,'/api/recognize-kream-captures',{scope,fast:'1'},{maxSide:1050,quality:.62,maxFiles:2});
+   onProgress?.(list.length,list.length,true);
    return d;
-  }catch(err){
-   onProgress?.(index+1,list.length,false);
-   return null;
-  }
- });
- const settled=await Promise.all(jobs);
- const ok=settled.filter(Boolean);
- if(ok.length)return mergeKreamResults(ok);
- // 전부 실패했을 때만 마지막으로 두 장 통합을 한 번 시도합니다.
- if(list.length>1)return await postImgs(list.slice(0,2),'/api/recognize-kream-captures',{scope},{maxSide:900,quality:.58,maxFiles:2});
+  }catch(secondError){throw new Error(secondError.message||firstError.message||'KREAM 캡처를 인식하지 못했습니다.')}
+ }
  throw new Error('KREAM 캡처를 인식하지 못했습니다.');
 }
 
@@ -207,14 +205,14 @@ function buildGeneralQuery(d={}){
 }
 function coupangSearchUrl(name){const q=String(name||buildGeneralQuery(window.generalScanData)||$('gName')?.value||'').trim();return q?'https://m.coupang.com/nm/search?q='+encodeURIComponent(q):''}
 function updateCoupangButton(){const b=$('gCoupangBtn');if(!b)return;const ok=!!String(buildGeneralQuery(window.generalScanData)||$('gName')?.value||'').trim();b.disabled=!ok;b.style.opacity=ok?'1':'.55'}
-function openCoupangSearch(name,preparedWindow){const url=coupangSearchUrl(name);if(!url){alert('상품명을 먼저 입력하거나 사진으로 인식하세요.');if(preparedWindow&&!preparedWindow.closed)preparedWindow.close();return false}try{if(preparedWindow&&!preparedWindow.closed){preparedWindow.location.replace(url);preparedWindow.focus()}else{window.open(url,'_blank','noopener')}return true}catch(e){location.href=url;return true}}
+function openCoupangSearch(name,preparedWindow){const url=coupangSearchUrl(name);if(!url){alert('상품명을 먼저 입력하거나 사진으로 인식하세요.');if(preparedWindow&&!preparedWindow.closed)preparedWindow.close();return false}try{if(preparedWindow&&!preparedWindow.closed)preparedWindow.close()}catch(e){}setTimeout(()=>{location.href=url},300);return true}
 function writeAutoMoveWaitingPage(w,marketName){
  if(!w)return null;
  try{
   const name=marketName||'쇼핑몰';
   w.document.open();
-  w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${name} 자동 연결 준비중</title><style>
-  *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;background:linear-gradient(180deg,#eef6ff 0%,#fff 72%);color:#17365d}body{display:flex;align-items:center;justify-content:center;padding:28px}.wait-card{width:min(520px,100%);background:#fff;border:1px solid #dbeafe;border-radius:24px;padding:36px 24px;text-align:center;box-shadow:0 18px 50px rgba(23,54,93,.14)}.hourglass{font-size:66px;display:inline-block;animation:flip 1.35s ease-in-out infinite}.dots span{display:inline-block;animation:blink 1.2s infinite}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}h1{font-size:24px;margin:16px 0 10px}.main{font-size:18px;font-weight:800;line-height:1.55}.sub{font-size:14px;color:#64748b;line-height:1.65;margin-top:16px}.badge{display:inline-block;margin-top:22px;padding:10px 14px;border-radius:999px;background:#e8f2ff;color:#1657a6;font-weight:800}@keyframes flip{0%,100%{transform:rotate(0)}50%{transform:rotate(180deg)}}@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}</style></head><body><main class="wait-card"><div class="hourglass">⏳</div><h1>상품 정보를 분석하고 있습니다</h1><div class="main">분석이 끝나면 ${name} 검색 화면으로<br>자동 이동합니다<span class="dots"><span>.</span><span>.</span><span>.</span></span></div><div class="badge">사진과 분석 결과는 자동 기록됩니다</div><div class="sub">창을 닫지 말고 잠시만 기다려 주세요.<br>분석 실패 시 이 창은 자동으로 닫힙니다.</div></main></body></html>`);
+  w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>${name} 연결 준비중</title><style>
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;background:linear-gradient(160deg,#e7f2ff,#f9fcff 58%,#edf7ff);color:#123963}body{display:grid;place-items:center;padding:5vw}.wait-card{width:92vw;max-width:760px;min-height:62vh;background:#fff;border:3px solid #cfe4ff;border-radius:34px;padding:8vh 5vw;text-align:center;box-shadow:0 24px 70px rgba(18,57,99,.22);display:flex;flex-direction:column;align-items:center;justify-content:center}.hourglass{font-size:clamp(96px,22vw,180px);line-height:1;display:block;animation:flip 1.15s ease-in-out infinite;filter:drop-shadow(0 12px 15px rgba(19,69,125,.18))}.dots span{display:inline-block;animation:blink 1.1s infinite}.dots span:nth-child(2){animation-delay:.18s}.dots span:nth-child(3){animation-delay:.36s}h1{font-size:clamp(30px,7vw,56px);margin:5vh 0 2vh;font-weight:950;letter-spacing:-.04em}.main{font-size:clamp(21px,5vw,38px);font-weight:900;line-height:1.5}.sub{font-size:clamp(16px,3.8vw,26px);color:#5f7187;line-height:1.65;margin-top:3vh;font-weight:700}.badge{display:inline-block;margin-top:4vh;padding:16px 22px;border-radius:999px;background:#e5f1ff;color:#1257a2;font-size:clamp(16px,3.8vw,25px);font-weight:900}@keyframes flip{0%,100%{transform:rotate(0)}50%{transform:rotate(180deg)}}@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}</style></head><body><main class="wait-card"><div class="hourglass">⏳</div><h1>상품 분석 중</h1><div class="main">잠시 후 ${name} 검색 화면으로<br>자동 이동합니다<span class="dots"><span>.</span><span>.</span><span>.</span></span></div><div class="badge">사진과 분석 결과는 자동 저장됩니다</div><div class="sub">화면을 닫지 말고 잠시 기다려 주세요.</div></main></body></html>`);
   w.document.close();
  }catch(e){}
  return w;
@@ -374,8 +372,7 @@ function renderSizeAnalysis(d){
 async function recognizeKreamCaptures(e){
  const files=e.target.files;if(!files?.length)return;const scope=$('kreamScope')?.value||'auto',started=Date.now();setAnalysisStatus('kreamCaptureStatus','working',`${files.length}장 분석중… 사진을 최적화하고 옵션·사이즈·거래량·수익을 비교합니다.`);
  try{
-  let finished=0,success=0;
-  const d=await analyzeKreamRobust(files,scope,(done,total,ok)=>{finished++;if(ok)success++;setAnalysisStatus('kreamCaptureStatus','working',`분석중 ⏳ ${finished}/${total}장 완료 · 성공 ${success}장 · 결과를 합치는 중입니다.`)});window.kreamAnalysisData=d||{};
+  const d=await analyzeKreamRobust(files,scope,(done,total)=>{setAnalysisStatus('kreamCaptureStatus','working',done?`빠른 분석중 ⏳ ${done}/${total}장 · 결과 정리 중입니다.`:`사진 ${total}장 압축 및 업로드 중입니다.`)});window.kreamAnalysisData=d||{};
   if(d.model_no&&!$('sModel').value)$('sModel').value=d.model_no;
   const rows=Array.isArray(d.sizes)?d.sizes:[];const selected=rows.find(x=>Number(x.size)===n('sSize'))||rows[0]||{};
   if(selected.size)$('sSize').value=selected.size;
@@ -385,7 +382,7 @@ async function recognizeKreamCaptures(e){
   syncSaleStats(true);renderSizeAnalysis(d);calcS();checkDup();saveSneakerDraft();autoSaveS('KREAM 캡처분석',true);
   const mode=d.analysis_mode==='all'?'모든 옵션':d.analysis_mode==='single'?'단일 사이즈':'자동판단';
   setAnalysisStatus('kreamCaptureStatus','success',`분석완료 (${((Date.now()-started)/1000).toFixed(1)}초) · ${mode} · ${rows.length||1}개 사이즈 · ${Array.isArray(d.capture_types)?d.capture_types.join(' + '):'KREAM 화면'} · 신뢰도 ${d.confidence||'보통'} · 기록 자동업데이트`);
- }catch(x){setAnalysisStatus('kreamCaptureStatus','failure','분석실패 · '+x.message+' · 각 사진을 따로 빠르게 재시도했지만 인식하지 못했습니다. KREAM 화면 전체가 선명하게 보이도록 다시 캡처해 주세요.')}
+ }catch(x){setAnalysisStatus('kreamCaptureStatus','failure','분석실패 · '+x.message+' · 화면 위아래가 잘리지 않은 선명한 KREAM 캡처로 다시 시도해 주세요.')}
  finally{e.target.value=''}
 }
 
@@ -526,9 +523,9 @@ function updateKreamSearchButton(){
  b.disabled=!q;
  b.textContent=q?`KREAM에서 ${q} 검색`:'KREAM에서 검색';
 }
-function showKreamReturnGuide(model){const st=$('sStatus');if(st)st.innerHTML=`KREAM을 별도 창으로 열었습니다. 캡처 후 <b>최근 앱에서 올데이픽 계산기</b>를 선택하면 바로 돌아옵니다.${model?` · 검색코드 ${esc(model)}`:''}`}
-function connectKreamAfterRecognition(win){const model=cleanSneakerModel($('sModel')?.value);updateKreamSearchButton();if(!model){if(win)try{win.close()}catch(e){};return false}const url=kreamSearchUrl(model);let target=win;try{if(!target||target.closed)target=window.open('', 'alldaypick_kream')}catch(e){}if(target&&!target.closed){try{target.location.replace(url);target.focus();showKreamReturnGuide(model);return true}catch(e){try{target.location.href=url;target.focus();showKreamReturnGuide(model);return true}catch(e2){}}}return false}
-function openKreamSearch(){const model=cleanSneakerModel($('sModel')?.value);if(!model)return alert('먼저 상품코드를 인식하거나 입력하세요.');const w=window.open(kreamSearchUrl(model),'_blank','noopener');if(w){showKreamReturnGuide(model);return}alert('새 창 열기가 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 눌러주세요. 계산기 화면은 그대로 유지됩니다.')}
+function showKreamReturnGuide(model){const st=$('sStatus');if(st)st.innerHTML=`KREAM 검색 화면으로 이동합니다. 확인 후 휴대폰의 <b>뒤로가기 한 번</b>을 누르면 계산기로 돌아옵니다.${model?` · 검색코드 ${esc(model)}`:''}`}
+function connectKreamAfterRecognition(win){const model=cleanSneakerModel($('sModel')?.value);updateKreamSearchButton();if(!model){if(win)try{win.close()}catch(e){};return false}const url=kreamSearchUrl(model);try{if(win&&!win.closed)win.close()}catch(e){}showKreamReturnGuide(model);setTimeout(()=>{location.href=url},350);return true}
+function openKreamSearch(){const model=cleanSneakerModel($('sModel')?.value);if(!model)return alert('먼저 상품코드를 인식하거나 입력하세요.');showKreamReturnGuide(model);location.href=kreamSearchUrl(model)}
 
 function checkDup(){const a=$('dupAlert'),m=norm($('sModel').value),z=n('sSize');if(!m){a.className='alert';return}const h=get('sRecords').find(x=>norm(x.model)===m&&(!z||x.size===z));if(!h){a.className='alert';return}a.className='alert warn';a.textContent=`이전에 확인한 제품입니다. 지난 구매가 ${won(h.buy)} · 평균 판매가 순이익 ${won(h.avgProfit||0)}`}
 async function recognizeSneaker(e){
