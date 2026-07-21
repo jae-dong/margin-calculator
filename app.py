@@ -11,7 +11,7 @@ ALLOWED={'image/jpeg','image/png','image/webp'}
 def cli():
     k=os.getenv('OPENAI_API_KEY')
     if not k: raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')
-    return OpenAI(api_key=k, timeout=38.0, max_retries=1)
+    return OpenAI(api_key=k, timeout=75.0, max_retries=2)
 def parse(t):
     raw=(t or '').strip()
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',raw,flags=re.I|re.S).strip()
@@ -259,59 +259,112 @@ def sneaker_batch():
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'통합 사진 분석 오류: {x}'),502
 
+def _to_int(v):
+    try:
+        if isinstance(v,str):
+            v=re.sub(r'[^0-9.-]','',v)
+        return max(0,int(float(v or 0)))
+    except Exception:
+        return 0
+
+def _normalize_capture_result(d, wanted_size=0):
+    """AI가 조금 다른 구조로 답해도 가격·사이즈를 최대한 살려 앱 표준 구조로 변환한다."""
+    d=dict(d or {})
+    rows_in=d.get('rows') or d.get('sizes') or d.get('options') or []
+    sizes=[]
+    all_prices=[]
+    for row in rows_in:
+        if not isinstance(row,dict):
+            continue
+        size=_to_int(row.get('size') or row.get('size_mm') or row.get('option_size'))
+        prices=[]
+        for value in row.get('prices') or row.get('trade_prices') or []:
+            price=_to_int(value)
+            if price: prices.append(price)
+        trades=[]
+        for t in row.get('trades') or row.get('transactions') or []:
+            if isinstance(t,dict):
+                price=_to_int(t.get('price') or t.get('amount'))
+                if price:
+                    prices.append(price)
+                    trades.append({'date':str(t.get('date') or t.get('trade_date') or ''),'price':price})
+            else:
+                price=_to_int(t)
+                if price: prices.append(price)
+        for key in ('recent_price','avg_price','high_price','low_price'):
+            price=_to_int(row.get(key))
+            if price: prices.append(price)
+        high=_to_int(row.get('high_price')) or (max(prices) if prices else 0)
+        low=_to_int(row.get('low_price')) or (min(prices) if prices else 0)
+        avg=_to_int(row.get('avg_price')) or (round(sum(prices)/len(prices)) if prices else 0)
+        recent=_to_int(row.get('recent_price')) or (prices[0] if prices else avg or low or high)
+        all_prices.extend(prices or [x for x in (high,avg,low,recent) if x])
+        sizes.append({
+            'size':size,
+            'trade_count':_to_int(row.get('trade_count') or row.get('visible_trade_count')) or len(trades) or len(prices),
+            'recent_price':recent,'avg_price':avg,'high_price':high,'low_price':low,
+            'recent_date':str(row.get('recent_date') or row.get('date') or ''),
+            'days_since_last_trade':_to_int(row.get('days_since_last_trade')) if row.get('days_since_last_trade') not in (None,'') else 999,
+            'lowest_ask':_to_int(row.get('lowest_ask') or row.get('sell_bid') or row.get('ask')),
+            'highest_bid':_to_int(row.get('highest_bid') or row.get('buy_bid') or row.get('bid')),
+            'demand':str(row.get('demand') or '자료부족'),
+            'recommendation_reason':str(row.get('recommendation_reason') or ''),
+            'trades':trades[:12]
+        })
+    summary=d.get('visible_summary') or d.get('summary') or {}
+    overall_high=_to_int(d.get('overall_high_price') or summary.get('high') or summary.get('high_price'))
+    overall_avg=_to_int(d.get('overall_avg_price') or summary.get('avg') or summary.get('average') or summary.get('avg_price'))
+    overall_low=_to_int(d.get('overall_low_price') or summary.get('low') or summary.get('low_price'))
+    if all_prices:
+        overall_high=overall_high or max(all_prices)
+        overall_avg=overall_avg or round(sum(all_prices)/len(all_prices))
+        overall_low=overall_low or min(all_prices)
+    if not sizes and any((overall_high,overall_avg,overall_low)):
+        sizes=[{'size':_to_int(wanted_size),'trade_count':_to_int(d.get('visible_trade_count')),
+                'recent_price':overall_avg or overall_low or overall_high,'avg_price':overall_avg,
+                'high_price':overall_high,'low_price':overall_low,'recent_date':'','days_since_last_trade':999,
+                'lowest_ask':_to_int(d.get('lowest_ask')),'highest_bid':_to_int(d.get('highest_bid')),
+                'demand':'자료부족','recommendation_reason':'가격은 인식했으나 사이즈 표시는 확인하지 못함','trades':[]}]
+    visible_count=_to_int(d.get('visible_trade_count')) or sum(_to_int(x.get('trade_count')) for x in sizes)
+    valid_sizes=[x for x in sizes if x.get('size')]
+    mode='all' if len(valid_sizes)>1 else 'single'
+    return {
+        'analysis_mode':mode,
+        'platform':str(d.get('platform') or ''),
+        'model_no':str(d.get('model_no') or d.get('model') or ''),
+        'product_name':str(d.get('product_name') or d.get('product_title') or ''),
+        'capture_types':d.get('capture_types') or ([d.get('screen_type')] if d.get('screen_type') else []),
+        'overall_high_price':overall_high,'overall_avg_price':overall_avg,'overall_low_price':overall_low,
+        'sizes':sizes,
+        'comparison_note':str(d.get('comparison_note') or ('단일옵션으로 사이즈 간 비교 불가' if mode=='single' else '')),
+        'visible_trade_count':visible_count,
+        'conflicts':d.get('conflicts') or [],
+        'confidence':str(d.get('confidence') or '보통')
+    }
+
 @app.post('/api/recognize-kream-captures')
 def kream_captures():
     try:
         scope=str(request.form.get('scope','auto') or 'auto').lower()
-        fast=str(request.form.get('fast','0'))=='1'
-        scope_note={'all':'모든 옵션 화면이다. 보이는 사이즈를 각각 분리한다.','single':'단일 사이즈 화면이다. 해당 사이즈만 반환한다.'}.get(scope,'화면을 보고 모든 옵션 또는 단일 사이즈를 판단한다.')
-        prompt=f"""KREAM 또는 POIZON 앱의 체결거래·판매입찰·구매입찰 스크린샷 1~2장을 읽는다. 화면의 플랫폼을 자동 구분한다. {scope_note}
-화면에 실제 보이는 값만 추출하고 추측하지 않는다. 체결거래와 판매입찰을 혼동하지 않는다.
-각 사이즈별로 사이즈(mm), 보이는 체결 건수, 최근가, 평균가, 최고가, 최저가, 최근 거래일, 판매입찰 최저가, 구매입찰 최고가를 반환한다.
-단일 사이즈면 sizes는 한 행만 반환하고 comparison_note에 '단일옵션으로 사이즈 간 비교 불가'를 넣는다.
-날짜 YYYY-MM-DD, 가격 원 단위 정수. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
-{{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":[],"overall_high_price":0,"overall_avg_price":0,"overall_low_price":0,"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}"""
-        d,e=vision(prompt,850 if fast else 1100,multiple=True)
+        wanted_size=_to_int(request.form.get('wanted_size'))
+        scope_note={'all':'여러 사이즈가 보이면 각 사이즈를 별도 행으로 분리한다.','single':'현재 선택된 한 사이즈 화면만 읽는다.'}.get(scope,'화면에 보이는 구조에 따라 단일 사이즈 또는 여러 사이즈를 판단한다.')
+        prompt=f'''KREAM 또는 POIZON 앱의 시세 스크린샷 한 장을 OCR처럼 정확히 읽어라. {scope_note}
+가장 중요한 것은 화면에 보이는 숫자를 빠뜨리지 않는 것이다. 체결거래 가격, 사이즈, 날짜, 판매입찰 최저가, 구매입찰 최고가를 보이는 그대로 추출한다.
+추측하거나 보이지 않는 숫자를 만들지 않는다. 쉼표가 포함된 원화 가격은 정수로 바꾼다. 사이즈가 안 보이면 size는 0이어도 되며 가격 데이터는 반드시 반환한다.
+한 화면에 체결 가격이 여러 개 보이면 prices 배열에 위에서 아래 순서로 모두 넣는다. 최고·평균·최저는 서버가 계산하므로 억지로 계산하지 않아도 된다.
+설명이나 마크다운 없이 JSON 하나만 반환한다:
+{{"platform":"KREAM|POIZON|기타","screen_type":"체결거래|판매입찰|구매입찰|시세요약|혼합","model_no":"","product_name":"","rows":[{{"size":0,"prices":[0],"trades":[{{"date":"YYYY-MM-DD","price":0}}],"lowest_ask":0,"highest_bid":0}}],"visible_summary":{{"high":0,"avg":0,"low":0}},"visible_trade_count":0,"confidence":"높음|보통|낮음"}}'''
+        d,e=vision(prompt,1050,multiple=True)
         if e:return jsonify(error=e[0]),e[1]
-        d=dict(d or {});sizes=[]
-        for row in d.get('sizes') or []:
-            if not isinstance(row,dict):continue
-            try: row['size']=int(float(row.get('size') or 0))
-            except: row['size']=0
-            for k in ('trade_count','recent_price','avg_price','high_price','low_price','days_since_last_trade','lowest_ask','highest_bid'):
-                try: row[k]=int(float(row.get(k) or 0))
-                except: row[k]=0
-            trades=[]
-            for t in row.get('trades') or []:
-                if isinstance(t,dict):
-                    try: price=int(float(t.get('price') or 0))
-                    except: price=0
-                    if price:trades.append({'date':str(t.get('date') or ''),'price':price})
-            row['trades']=trades[:8]
-            if row['size']:sizes.append(row)
-        for k in ('overall_high_price','overall_avg_price','overall_low_price','visible_trade_count'):
-            try:d[k]=max(0,int(float(d.get(k) or 0)))
-            except:d[k]=0
-        # 화면에 사이즈 숫자가 잘리지 않았더라도 가격 통계가 보이면 결과를 버리지 않는다.
-        if not sizes and any(d.get(k) for k in ('overall_high_price','overall_avg_price','overall_low_price')):
-            sizes=[{
-                'size': int(float(request.form.get('wanted_size') or 0)),
-                'trade_count': d.get('visible_trade_count') or 0,
-                'recent_price': d.get('overall_avg_price') or d.get('overall_low_price') or d.get('overall_high_price') or 0,
-                'avg_price': d.get('overall_avg_price') or 0,
-                'high_price': d.get('overall_high_price') or 0,
-                'low_price': d.get('overall_low_price') or 0,
-                'recent_date':'','days_since_last_trade':999,
-                'lowest_ask':0,'highest_bid':0,'demand':'자료부족',
-                'recommendation_reason':'화면의 전체 가격 통계만 인식됨','trades':[]
-            }]
-        d['sizes']=sizes
-        d['analysis_mode']='all' if len([x for x in sizes if x.get('size')])>1 else 'single'
-        if d['analysis_mode']=='single' and not d.get('comparison_note'):d['comparison_note']='단일옵션으로 사이즈 간 비교 불가'
-        return jsonify(d)
-    except Exception as x:
-        app.logger.warning('KREAM capture parse/vision failure: %s',x)
-        return jsonify(error='KREAM·POIZON 화면의 글자를 완전히 읽지 못했습니다. 화면 전체가 보이도록 다시 캡처해 주세요.'),502
+        out=_normalize_capture_result(d,wanted_size)
+        has_price=any((out.get('overall_high_price'),out.get('overall_avg_price'),out.get('overall_low_price')))
+        has_rows=any(any(_to_int(x.get(k)) for k in ('recent_price','avg_price','high_price','low_price','lowest_ask','highest_bid')) for x in out.get('sizes') or [])
+        if not (has_price or has_rows):
+            return jsonify(error='가격 숫자를 읽지 못했습니다. 가격과 사이즈가 보이는 화면 전체 캡처를 올려 주세요.'),422
+        return jsonify(out)
+    except Exception:
+        app.logger.exception('KREAM/POIZON capture analysis failure')
+        return jsonify(error='캡처 분석 중 오류가 발생했습니다. 잠시 후 같은 사진으로 다시 시도해 주세요.'),502
 
 @app.post('/api/recognize-sneaker-outlet-tag')
 def sneaker_outlet_tag():
