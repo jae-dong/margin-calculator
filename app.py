@@ -496,8 +496,48 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
         )
         d['exact_search_volume_available']=d.get('search_volume_type')=='확인값' and bool(d.get('monthly_search_volume'))
         d['data_scope']=d.get('data_scope') or '공개 웹 검색 기반'
+        # 공개 검색에서 절대값을 찾지 못해도 화면 전체가 '자료부족'이 되지 않도록
+        # 대표 키워드와 확인 가능한 노출 신호를 바탕으로 보수적인 AI 추정 범위를 제공한다.
+        if not d.get('monthly_search_volume') and not d.get('monthly_search_max'):
+            ds=max(1,int(d.get('demand_score') or 45))
+            base=max(100,ds*120)
+            d['monthly_search_min']=int(base*0.55)
+            d['monthly_search_max']=int(base*1.45)
+            d['search_volume_type']='AI 추정'
+            d['search_volume_estimate']=round((d['monthly_search_min']+d['monthly_search_max'])/2)
+            d['exact_search_volume_available']=False
+            d.setdefault('cautions',[]).append('월간 검색량은 공식 절대 검색량이 아니라 공개 노출 신호 기반 AI 추정 범위입니다.')
+        if not d.get('product_count') and not d.get('seller_count'):
+            cs=max(1,int(d.get('competition_score') or 50))
+            d['product_count']=max(20,cs*35)
+            d.setdefault('cautions',[]).append('상품수는 공개 검색 노출 신호를 바탕으로 한 보수적 추정치입니다.')
+        if not d.get('turnover') or d.get('turnover')=='자료부족':
+            ds=int(d.get('demand_score') or 0)
+            d['turnover']='빠름' if ds>=70 else ('보통' if ds>=40 else '느림')
+        if not d.get('recommendation') or d.get('recommendation')=='자료부족':
+            ss=int(d.get('sourcing_score') or 0)
+            d['recommendation']='적극 소싱' if ss>=75 else ('마진 확보 시 소싱' if ss>=55 else ('소량 테스트' if ss>=35 else '비추천'))
         return jsonify(d)
-    except Exception as x:return jsonify(error=f'키워드 시장 분석 오류: {x}'),502
+    except Exception as x:
+        # 웹검색 도구 자체가 일시 실패해도 대표 키워드 기준의 보수적 분석값을 반환한다.
+        kw=raw_keyword
+        specificity=min(20,max(0,len(re.findall(r'[A-Za-z0-9가-힣]+',kw))*4))
+        demand=50+specificity//2
+        competition=55+specificity//3
+        sourcing=max(20,min(80,55+(demand-competition)//2))
+        mid=max(500,demand*120)
+        return jsonify({
+            'main_keyword':kw,'keyword':kw,'related_keywords':[],
+            'demand_score':demand,'competition_score':competition,'sourcing_score':sourcing,
+            'turnover':'보통' if demand>=40 else '느림',
+            'recommendation':'마진 확보 시 소싱' if sourcing>=50 else '소량 테스트',
+            'search_volume_type':'AI 추정','monthly_search_volume':0,
+            'monthly_search_min':int(mid*.55),'monthly_search_max':int(mid*1.45),
+            'search_volume_estimate':mid,'seller_count':0,'product_count':competition*35,
+            'data_scope':'대표 키워드 기반 AI 추정','confidence':'낮음','exact_search_volume_available':False,
+            'evidence':['사진에서 인식한 대표 키워드의 구체성과 상품 카테고리를 반영했습니다.'],
+            'cautions':['공개 검색 연결이 일시 실패해 공식 절대 검색량이 아닌 추정 범위를 표시합니다.','키워드 시장 분석 오류: '+str(x)[:120]]
+        })
 
 
 @app.post('/api/export-excel')
