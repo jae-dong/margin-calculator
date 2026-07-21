@@ -71,7 +71,7 @@ button{transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}butt
 .auto-market-note{background:#eef6ff;border:1px solid #c8def7;border-radius:12px;padding:10px;margin-top:10px;font-size:12px;font-weight:800;color:#315271}
 
 </style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v5.1.5</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">WEB v5.1.6</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section id="m-g" class="modepage active">
@@ -602,8 +602,33 @@ function scheduleDraftSave(){clearTimeout(draftTimer);draftTimer=setTimeout(save
 function restoreWorkingDraft(){
  restoringDraft=true;try{const d=JSON.parse(localStorage.getItem(WORKING_DRAFT_KEY)||'{}');Object.entries(d.values||{}).forEach(([id,v])=>{const el=$(id);if(el&&el.type!=='file')el.value=v});window.generalScanData=d.generalScanData||{};window.sneakerScanData=d.sneakerScanData||{};window.generalMarketAnalysis=d.generalMarketAnalysis||{};window.sneakerMarketAnalysis=d.sneakerMarketAnalysis||{};toggleCustomStore();toggleCustomDiscount();if(Object.keys(window.generalScanData).length)showGeneralScan(window.generalScanData);if(Object.keys(window.generalMarketAnalysis).length)renderMarketAnalysis(window.generalMarketAnalysis);if(Object.keys(window.sneakerMarketAnalysis).length)renderSneakerMarketAnalysis(window.sneakerMarketAnalysis)}catch(e){}finally{restoringDraft=false}}
 function resetCurrentProduct(){
- if(!confirm('현재 확인 중인 일반상품·스니커즈 입력값만 초기화할까요? 저장 기록과 설정은 삭제되지 않습니다.'))return;
- [WORKING_DRAFT_KEY,'sneakerDraftV32','sneakerDraftV31','sneakerDraftV27'].forEach(k=>localStorage.removeItem(k));location.reload();
+ if(!confirm('현재 확인 중인 일반상품·스니커즈 입력값만 0으로 초기화할까요? 저장 기록과 설정은 삭제되지 않습니다.'))return;
+ restoringDraft=true;
+ try{
+  [WORKING_DRAFT_KEY,'sneakerDraftV32','sneakerDraftV31','sneakerDraftV27'].forEach(k=>localStorage.removeItem(k));
+  const zeroIds=['gSale','gCost','gOther','sListPrice','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale','sOther','sSize'];
+  zeroIds.forEach(id=>{const el=$(id);if(el)el.value='0'});
+  const blankIds=['gName','gStoreCustom','gKeyword','gMemo','sKeyword','sModel','sStore'];
+  blankIds.forEach(id=>{const el=$(id);if(el)el.value=''});
+  if($('gBundle'))$('gBundle').value='1';
+  if($('gMarket'))$('gMarket').value='0';
+  if($('gStore'))$('gStore').selectedIndex=0;
+  if($('sDiscount'))$('sDiscount').value='0';
+  if($('sBrand'))$('sBrand').selectedIndex=0;
+  for(let i=1;i<=5;i++){if($('sTradeDate'+i))$('sTradeDate'+i).value='';if($('sTradePrice'+i))$('sTradePrice'+i).value=''}
+  window.generalScanData={};window.sneakerScanData={};window.generalMarketAnalysis={};window.sneakerMarketAnalysis={};window.kreamSizeRows=[];window.kreamVisibleTradeCount=0;
+  if($('gScanResult'))$('gScanResult').classList.remove('show');
+  if($('gScanGrid'))$('gScanGrid').innerHTML='';
+  if($('sScanResult'))$('sScanResult').classList.remove('show');
+  if($('sScanGrid'))$('sScanGrid').innerHTML='';
+  if($('sDemand'))$('sDemand').value='거래자료 대기';
+  if($('sDemandReason'))$('sDemandReason').textContent='체결 거래와 입찰 자료를 분석해 자동으로 판단합니다.';
+  if($('tradeSummary'))$('tradeSummary').textContent='KREAM·POIZON 캡처를 올려주세요.';
+  if($('kreamCaptureStatus'))$('kreamCaptureStatus').textContent='KREAM 또는 POIZON 화면을 선택해 주세요.';
+  toggleCustomStore();toggleCustomDiscount();resetMarketAnalysis();resetSneakerMarketAnalysis();calcDiscount();calcG();calcS();validateComp();updateCoupangButton();updateKreamSearchButton();
+ }finally{restoringDraft=false}
+ saveWorkingDraft();
+ alert('현재 확인 상품이 초기화되었습니다. 가격표와 할인율도 0으로 변경되었습니다.');
 }
 document.addEventListener('input',e=>{if(e.target.closest('#m-g,#m-s')&&e.target.type!=='file')scheduleDraftSave()});
 document.addEventListener('change',e=>{if(e.target.closest('#m-g,#m-s')&&e.target.type!=='file')scheduleDraftSave()});
