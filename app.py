@@ -265,7 +265,7 @@ def kream_captures():
         scope=str(request.form.get('scope','auto') or 'auto').lower()
         fast=str(request.form.get('fast','0'))=='1'
         scope_note={'all':'모든 옵션 화면이다. 보이는 사이즈를 각각 분리한다.','single':'단일 사이즈 화면이다. 해당 사이즈만 반환한다.'}.get(scope,'화면을 보고 모든 옵션 또는 단일 사이즈를 판단한다.')
-        prompt=f"""KREAM 앱의 체결거래 또는 판매입찰 스크린샷 1~2장을 읽는다. {scope_note}
+        prompt=f"""KREAM 또는 POIZON 앱의 체결거래·판매입찰·구매입찰 스크린샷 1~2장을 읽는다. 화면의 플랫폼을 자동 구분한다. {scope_note}
 화면에 실제 보이는 값만 추출하고 추측하지 않는다. 체결거래와 판매입찰을 혼동하지 않는다.
 각 사이즈별로 사이즈(mm), 보이는 체결 건수, 최근가, 평균가, 최고가, 최저가, 최근 거래일, 판매입찰 최저가, 구매입찰 최고가를 반환한다.
 단일 사이즈면 sizes는 한 행만 반환하고 comparison_note에 '단일옵션으로 사이즈 간 비교 불가'를 넣는다.
@@ -295,7 +295,7 @@ def kream_captures():
         return jsonify(d)
     except Exception as x:
         app.logger.warning('KREAM capture parse/vision failure: %s',x)
-        return jsonify(error='KREAM 화면의 글자를 완전히 읽지 못했습니다. 화면 전체가 보이도록 다시 캡처해 주세요.'),502
+        return jsonify(error='KREAM·POIZON 화면의 글자를 완전히 읽지 못했습니다. 화면 전체가 보이도록 다시 캡처해 주세요.'),502
 
 @app.post('/api/recognize-sneaker-outlet-tag')
 def sneaker_outlet_tag():
@@ -361,16 +361,19 @@ def analyze_market_keyword():
 키워드: {keyword}
 상품정보: {json.dumps(context,ensure_ascii=False)}
 
-참고 관점은 네이버 데이터랩 쇼핑인사이트, 아이템스카우트, 판다랭크, 셀러라이프(현 셀록홈즈) 같은 키워드 도구가 사용하는 일반적인 지표인 검색 관심도, 상품수/판매자수, 리뷰 집중도, 브랜드 강도, 가격경쟁, 계절성이다. 해당 서비스의 로그인·유료·비공개 수치를 우회하거나 복제하지 않는다. 공개 페이지에서 정확한 월간검색량을 확인할 수 없으면 숫자를 만들지 말고 exact_search_volume_available=false로 한다.
+참고 관점은 네이버 데이터랩 쇼핑인사이트, 아이템스카우트, 판다랭크, 셀러라이프(현 셀록홈즈) 같은 키워드 도구가 사용하는 일반적인 지표인 검색 관심도, 상품수/판매자수, 리뷰 집중도, 브랜드 강도, 가격경쟁, 계절성이다. 해당 서비스의 로그인·유료·비공개 수치를 우회하거나 복제하지 않는다. 공개 페이지에서 정확한 월간검색량 또는 판매자·상품 수를 확인할 수 없으면 정확한 값인 것처럼 만들지 않는다. 다만 공개 근거에 기반한 보수적 추정이 가능하면 search_volume_estimate에 넣고, seller_count 또는 product_count는 실제 확인 가능한 경우에만 넣는다.
 
 수요점수와 경쟁점수는 0~100. 소싱지수는 현재 마진율/ROI도 반영하되 수요가 높고 경쟁이 낮을수록 높다. 근거가 약하면 confidence를 낮음으로 표시한다. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
-{{"keyword":"","demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","exact_search_volume_available":false,"monthly_search_volume":0,"data_scope":"공개 웹 기반 AI 추정","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
+{{"keyword":"","demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","exact_search_volume_available":false,"monthly_search_volume":0,"search_volume_estimate":0,"seller_count":0,"product_count":0,"data_scope":"공개 웹 기반 AI 추정","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
         r=cli().responses.create(model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),tools=[{'type':'web_search_preview'}],input=prompt,max_output_tokens=900)
         d=parse(r.output_text)
         for k in ('demand_score','competition_score','sourcing_score'):
             d[k]=max(0,min(100,int(float(d.get(k) or 0))))
         d['keyword']=d.get('keyword') or keyword
         if not d.get('exact_search_volume_available'):d['monthly_search_volume']=0
+        for k in ('monthly_search_volume','search_volume_estimate','seller_count','product_count'):
+            try:d[k]=max(0,int(float(d.get(k) or 0)))
+            except:d[k]=0
         d['data_scope']=d.get('data_scope') or '공개 웹 기반 AI 추정'
         return jsonify(d)
     except Exception as x:return jsonify(error=f'키워드 시장 분석 오류: {x}'),502
