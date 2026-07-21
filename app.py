@@ -270,7 +270,7 @@ def kream_captures():
 각 사이즈별로 사이즈(mm), 보이는 체결 건수, 최근가, 평균가, 최고가, 최저가, 최근 거래일, 판매입찰 최저가, 구매입찰 최고가를 반환한다.
 단일 사이즈면 sizes는 한 행만 반환하고 comparison_note에 '단일옵션으로 사이즈 간 비교 불가'를 넣는다.
 날짜 YYYY-MM-DD, 가격 원 단위 정수. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
-{{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":[],"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}"""
+{{"analysis_mode":"all|single","model_no":"","product_name":"","capture_types":[],"overall_high_price":0,"overall_avg_price":0,"overall_low_price":0,"sizes":[{{"size":0,"trade_count":0,"recent_price":0,"avg_price":0,"high_price":0,"low_price":0,"recent_date":"","days_since_last_trade":0,"lowest_ask":0,"highest_bid":0,"demand":"높음|보통|낮음|자료부족","recommendation_reason":"","trades":[{{"date":"YYYY-MM-DD","price":0}}]}}],"comparison_note":"","visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}}"""
         d,e=vision(prompt,850 if fast else 1100,multiple=True)
         if e:return jsonify(error=e[0]),e[1]
         d=dict(d or {});sizes=[]
@@ -289,8 +289,24 @@ def kream_captures():
                     if price:trades.append({'date':str(t.get('date') or ''),'price':price})
             row['trades']=trades[:8]
             if row['size']:sizes.append(row)
+        for k in ('overall_high_price','overall_avg_price','overall_low_price','visible_trade_count'):
+            try:d[k]=max(0,int(float(d.get(k) or 0)))
+            except:d[k]=0
+        # 화면에 사이즈 숫자가 잘리지 않았더라도 가격 통계가 보이면 결과를 버리지 않는다.
+        if not sizes and any(d.get(k) for k in ('overall_high_price','overall_avg_price','overall_low_price')):
+            sizes=[{
+                'size': int(float(request.form.get('wanted_size') or 0)),
+                'trade_count': d.get('visible_trade_count') or 0,
+                'recent_price': d.get('overall_avg_price') or d.get('overall_low_price') or d.get('overall_high_price') or 0,
+                'avg_price': d.get('overall_avg_price') or 0,
+                'high_price': d.get('overall_high_price') or 0,
+                'low_price': d.get('overall_low_price') or 0,
+                'recent_date':'','days_since_last_trade':999,
+                'lowest_ask':0,'highest_bid':0,'demand':'자료부족',
+                'recommendation_reason':'화면의 전체 가격 통계만 인식됨','trades':[]
+            }]
         d['sizes']=sizes
-        d['analysis_mode']='all' if len(sizes)>1 else 'single'
+        d['analysis_mode']='all' if len([x for x in sizes if x.get('size')])>1 else 'single'
         if d['analysis_mode']=='single' and not d.get('comparison_note'):d['comparison_note']='단일옵션으로 사이즈 간 비교 불가'
         return jsonify(d)
     except Exception as x:
@@ -351,32 +367,73 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
 
 @app.post('/api/analyze-market-keyword')
 def analyze_market_keyword():
-    """공개 웹 자료를 바탕으로 키워드 수요/경쟁을 추정한다."""
+    """사진에서 인식한 상품명을 대표 키워드로 정제한 뒤 공개 웹 자료로 수요/경쟁을 평가한다."""
     try:
         body=request.get_json(silent=True) or {}
-        keyword=str(body.get('keyword') or '').strip()[:120]
-        if not keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
+        raw_keyword=str(body.get('keyword') or '').strip()[:160]
+        if not raw_keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
         context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
-        prompt=f"""한국 온라인 쇼핑 상품 키워드의 수요와 경쟁강도를 공개 웹 자료로 조사하고 보수적으로 평가한다.
-키워드: {keyword}
+        prompt=f"""한국 온라인 쇼핑 상품을 분석한다.
+
+입력 검색어: {raw_keyword}
 상품정보: {json.dumps(context,ensure_ascii=False)}
 
-참고 관점은 네이버 데이터랩 쇼핑인사이트, 아이템스카우트, 판다랭크, 셀러라이프(현 셀록홈즈) 같은 키워드 도구가 사용하는 일반적인 지표인 검색 관심도, 상품수/판매자수, 리뷰 집중도, 브랜드 강도, 가격경쟁, 계절성이다. 해당 서비스의 로그인·유료·비공개 수치를 우회하거나 복제하지 않는다. 공개 페이지에서 정확한 월간검색량 또는 판매자·상품 수를 확인할 수 없으면 정확한 값인 것처럼 만들지 않는다. 다만 공개 근거에 기반한 보수적 추정이 가능하면 search_volume_estimate에 넣고, seller_count 또는 product_count는 실제 확인 가능한 경우에만 넣는다.
+1단계: 입력값에서 소비자가 실제로 검색할 대표 키워드(main_keyword)를 만든다.
+- 일반상품: 브랜드 + 핵심 상품명 + 핵심 규격까지만 사용한다.
+- 스니커즈: 브랜드 + 모델군/모델번호를 우선한다. 색상·사이즈·내부관리번호·바코드는 대표 키워드에서 제외한다.
+- 광고문구, 수량 1개, 혼합색상, 무료배송 같은 불필요한 단어를 제거한다.
+- related_keywords에는 검색 의도가 분명한 보조 키워드 2~4개만 넣는다.
 
-수요점수와 경쟁점수는 0~100. 소싱지수는 현재 마진율/ROI도 반영하되 수요가 높고 경쟁이 낮을수록 높다. 근거가 약하면 confidence를 낮음으로 표시한다. 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
-{{"keyword":"","demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","exact_search_volume_available":false,"monthly_search_volume":0,"search_volume_estimate":0,"seller_count":0,"product_count":0,"data_scope":"공개 웹 기반 AI 추정","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
-        r=cli().responses.create(model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),tools=[{'type':'web_search_preview'}],input=prompt,max_output_tokens=900)
-        d=parse(r.output_text)
+2단계: main_keyword로 공개 웹 검색을 수행해 한국 온라인 쇼핑의 수요와 경쟁을 조사한다.
+우선 확인할 공개 근거:
+- 네이버 검색/쇼핑 결과에 노출된 상품 수 또는 관련 문서
+- 쿠팡·11번가·G마켓 등 공개 검색 결과
+- 검색 트렌드나 키워드 통계를 공개적으로 보여주는 페이지
+- 제조사·브랜드·판매처의 상품 노출 빈도와 리뷰 집중도
+
+유료 회원 전용 데이터나 로그인 뒤 수치를 우회하지 않는다. 정확한 월간 검색량을 확인하지 못하면 search_volume_type을 "추정"으로 하고, 공개 근거에 따른 보수적 범위를 monthly_search_min/monthly_search_max에 넣는다. 공개 수치도 근거도 부족하면 0으로 둔다.
+판매자 수와 상품 수는 실제 확인한 숫자가 있으면 seller_count/product_count에 넣고, 검색결과 수만 확인되면 product_count에 넣는다.
+competition_score는 상품수·판매자수·브랜드 독점·리뷰 집중도를 반영한 0~100 점수다.
+demand_score는 검색 관심도·노출 빈도·거래/리뷰 신호를 반영한 0~100 점수다.
+sourcing_score는 수요가 높고 경쟁이 낮으며 입력 마진/ROI가 좋을수록 높다.
+evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫자를 사실처럼 만들지 않는다.
+
+설명·마크다운 없이 완전한 JSON 하나만 반환한다:
+{{"main_keyword":"","related_keywords":[],"demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","search_volume_type":"확인값|추정|자료부족","monthly_search_volume":0,"monthly_search_min":0,"monthly_search_max":0,"seller_count":0,"product_count":0,"data_scope":"공개 웹 검색 기반","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
+        client=cli()
+        response=None
+        last_error=None
+        for tool_type in ('web_search','web_search_preview'):
+            try:
+                response=client.responses.create(
+                    model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),
+                    tools=[{'type':tool_type}],
+                    input=prompt,
+                    max_output_tokens=1200
+                )
+                break
+            except Exception as exc:
+                last_error=exc
+        if response is None: raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
+        d=parse(response.output_text)
         for k in ('demand_score','competition_score','sourcing_score'):
-            d[k]=max(0,min(100,int(float(d.get(k) or 0))))
-        d['keyword']=d.get('keyword') or keyword
-        if not d.get('exact_search_volume_available'):d['monthly_search_volume']=0
-        for k in ('monthly_search_volume','search_volume_estimate','seller_count','product_count'):
+            try:d[k]=max(0,min(100,int(float(d.get(k) or 0))))
+            except:d[k]=0
+        for k in ('monthly_search_volume','monthly_search_min','monthly_search_max','seller_count','product_count'):
             try:d[k]=max(0,int(float(d.get(k) or 0)))
             except:d[k]=0
-        d['data_scope']=d.get('data_scope') or '공개 웹 기반 AI 추정'
+        d['main_keyword']=str(d.get('main_keyword') or raw_keyword).strip()[:100]
+        d['keyword']=d['main_keyword']
+        d['related_keywords']=[str(x).strip() for x in (d.get('related_keywords') or []) if str(x).strip()][:4]
+        d['search_volume_estimate']=d.get('monthly_search_volume') or (
+            round((d.get('monthly_search_min',0)+d.get('monthly_search_max',0))/2)
+            if d.get('monthly_search_max',0) else 0
+        )
+        d['exact_search_volume_available']=d.get('search_volume_type')=='확인값' and bool(d.get('monthly_search_volume'))
+        d['data_scope']=d.get('data_scope') or '공개 웹 검색 기반'
         return jsonify(d)
     except Exception as x:return jsonify(error=f'키워드 시장 분석 오류: {x}'),502
+
 
 @app.post('/api/export-excel')
 def export_excel():
