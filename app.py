@@ -290,7 +290,15 @@ def _normalize_capture_result(d, wanted_size=0):
                     trades.append({'date':str(t.get('date') or t.get('trade_date') or ''),'price':price})
             else:
                 price=_to_int(t)
-                if price: prices.append(price)
+                if price:
+                    prices.append(price)
+                    trades.append({'date':'','price':price})
+        # AI가 prices 배열만 반환하는 경우에도 최근 거래 입력칸이 비지 않도록 거래 행으로 보존한다.
+        existing_prices=[_to_int(t.get('price')) for t in trades]
+        for price in prices:
+            if price and price not in existing_prices:
+                trades.append({'date':'','price':price})
+                existing_prices.append(price)
         for key in ('recent_price','avg_price','high_price','low_price'):
             price=_to_int(row.get(key))
             if price: prices.append(price)
@@ -325,6 +333,10 @@ def _normalize_capture_result(d, wanted_size=0):
                 'high_price':overall_high,'low_price':overall_low,'recent_date':'','days_since_last_trade':999,
                 'lowest_ask':_to_int(d.get('lowest_ask')),'highest_bid':_to_int(d.get('highest_bid')),
                 'demand':'자료부족','recommendation_reason':'가격은 인식했으나 사이즈 표시는 확인하지 못함','trades':[]}]
+    # 단일 화면에서 사이즈 숫자를 못 읽었지만 사용자가 제품 사이즈를 이미 입력한 경우 그 값을 연결한다.
+    if len(sizes)==1 and not _to_int(sizes[0].get('size')) and _to_int(wanted_size):
+        sizes[0]['size']=_to_int(wanted_size)
+        sizes[0]['recommendation_reason']=sizes[0].get('recommendation_reason') or '캡처에서 사이즈가 흐려 현재 상품 입력 사이즈를 적용함'
     visible_count=_to_int(d.get('visible_trade_count')) or sum(_to_int(x.get('trade_count')) for x in sizes)
     valid_sizes=[x for x in sizes if x.get('size')]
     mode='all' if len(valid_sizes)>1 else 'single'
@@ -351,7 +363,7 @@ def kream_captures():
         prompt=f'''KREAM 또는 POIZON 앱의 시세 스크린샷 한 장을 OCR처럼 정확히 읽어라. {scope_note}
 가장 중요한 것은 화면에 보이는 숫자를 빠뜨리지 않는 것이다. 체결거래 가격, 사이즈, 날짜, 판매입찰 최저가, 구매입찰 최고가를 보이는 그대로 추출한다.
 추측하거나 보이지 않는 숫자를 만들지 않는다. 쉼표가 포함된 원화 가격은 정수로 바꾼다. 사이즈가 안 보이면 size는 0이어도 되며 가격 데이터는 반드시 반환한다.
-한 화면에 체결 가격이 여러 개 보이면 prices 배열에 위에서 아래 순서로 모두 넣는다. 최고·평균·최저는 서버가 계산하므로 억지로 계산하지 않아도 된다.
+한 화면에 체결 가격이 여러 개 보이면 prices 배열과 trades 배열에 위에서 아래 순서로 모두 넣는다. 날짜가 안 보이면 date는 빈 문자열로 두되 price는 반드시 보존한다. 각 거래 행에 사이즈가 같이 보이면 반드시 해당 size 행에 묶고, 여러 사이즈가 섞인 화면이면 사이즈별 rows를 따로 만든다. 최고·평균·최저는 서버가 계산하므로 억지로 계산하지 않아도 된다.
 설명이나 마크다운 없이 JSON 하나만 반환한다:
 {{"platform":"KREAM|POIZON|기타","screen_type":"체결거래|판매입찰|구매입찰|시세요약|혼합","model_no":"","product_name":"","rows":[{{"size":0,"prices":[0],"trades":[{{"date":"YYYY-MM-DD","price":0}}],"lowest_ask":0,"highest_bid":0}}],"visible_summary":{{"high":0,"avg":0,"low":0}},"visible_trade_count":0,"confidence":"높음|보통|낮음"}}'''
         d,e=vision(prompt,1050,multiple=True)
