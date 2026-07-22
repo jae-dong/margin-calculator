@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.2.4</title><style>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.2.5</title><style>
 :root{--n:#1657a6;--n2:#0d3f7a;--sky:#eaf5ff;--mint:#e8fbf5;--bg:#f7faff;--line:#d7e4f2;--g:#087a55;--r:#c73545;--o:#b76500;--purple:#7357c7}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,'Noto Sans KR',sans-serif;color:#111}.app{max-width:760px;margin:auto;padding:14px 12px 165px}.hero{background:linear-gradient(135deg,#102a48,var(--n));color:#fff;border-radius:22px;padding:22px}.hero h1{margin:0 0 8px;font-size:25px}.hero p{margin:0;font-size:13px;font-weight:700}.ver{display:inline-block;margin-top:9px;padding:4px 9px;border-radius:999px;background:#ffffff22;font-size:11px;font-weight:900}.tabs,.modes,.actions,.grid2,.metrics{display:grid;gap:9px}.tabs{grid-template-columns:repeat(5,1fr);margin:12px 0}.modes{grid-template-columns:1fr 1fr}.actions,.grid2{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(3,1fr)}button{border:0;border-radius:13px;padding:12px;font-weight:900;cursor:pointer}.tab,.mode,.secondary{background:#e7ebf1;color:#1e2a36}.tab.active,.mode.active,.primary{background:var(--n);color:#fff}.danger{background:#fdeaea;color:var(--r)}.page,.modepage{display:none}.page.active,.modepage.active{display:block}#m-g:not(.active),#m-s:not(.active){display:none!important}.card{background:#fff;border-radius:19px;padding:17px;margin:13px 0;box-shadow:0 7px 22px #00000010}.card h2{font-size:18px;margin:0 0 14px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:900;margin-bottom:7px}input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:13px;font:inherit}textarea{min-height:110px}.metric{background:#f0f3f7;border-radius:15px;padding:13px 7px;text-align:center}.metric.good{background:#eef9f1;border:1px solid #a7dcb4}.lab{font-size:11px;font-weight:900;color:#5d6874}.val{font-size:21px;font-weight:900;margin-top:6px}.decision,.alert{padding:14px;border-radius:14px;font-weight:900;line-height:1.5;margin-top:11px}.buy,.ok{background:#eaf7ef;color:var(--g);border:1px solid #b7e1c2}.review,.warn{background:#fff4e5;color:var(--o);border:1px solid #ffd8a8}.stop{background:#fff0f0;color:var(--r);border:1px solid #ffc9c9}.alert{display:none;font-size:13px}.alert.ok,.alert.warn{display:block}.sub,.meta{font-size:12px;color:#66717d;line-height:1.55;white-space:pre-wrap;margin-top:7px}.record{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;background:#fbfcfd}.record.clickable{cursor:pointer;transition:.15s}.record.clickable:active{transform:scale(.99);background:#eef6ff}.record .openhint{font-size:11px;color:#1657a6;font-weight:900;margin-top:7px}.record-layout{display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;align-items:start}.record-thumb{width:82px;height:82px;border-radius:13px;object-fit:cover;background:#eef3f8;border:1px solid #d7e4f2}.record-thumb.empty{display:flex;align-items:center;justify-content:center;font-size:28px;color:#8b98a6}.record-body{min-width:0}.record-body b{display:block;overflow-wrap:anywhere}@media(max-width:390px){.record-layout{grid-template-columns:70px minmax(0,1fr)}.record-thumb{width:70px;height:70px}}.empty{text-align:center;color:#7d8792;padding:20px}.sticky{position:fixed;z-index:999;bottom:0;left:0;right:0;background:#fffffff2;border-top:1px solid var(--line);padding:8px}.sticky>div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:7px}.quick button{padding:8px 3px;font-size:12px}@media(max-width:520px){
  html,body{width:100%;max-width:100%;overflow-x:hidden}
  body{padding-top:env(safe-area-inset-top)}
@@ -71,7 +71,7 @@ button{transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}butt
 .auto-market-note{background:#eef6ff;border:1px solid #c8def7;border-radius:12px;padding:10px;margin-top:10px;font-size:12px;font-weight:800;color:#315271}
 
 </style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.2.4</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.2.5</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section id="m-g" class="modepage active">
@@ -605,19 +605,30 @@ function beginSneakerPick(inputId){
  input.value='';
  input.click();
 }
+const LAST_SNEAKER_QUERY_KEY='lastRecognizedSneakerQueryV525';
+function rememberSneakerSearchQuery(q){
+ q=String(q||'').trim();
+ if(!q)return '';
+ try{localStorage.setItem(LAST_SNEAKER_QUERY_KEY,q)}catch(e){}
+ return q;
+}
+function recalledSneakerSearchQuery(){
+ try{return String(localStorage.getItem(LAST_SNEAKER_QUERY_KEY)||'').trim()}catch(e){return ''}
+}
 function buildSneakerSearchQuery(){
  const sneaker=window.sneakerScanData||{};
  const capture=window.kreamAnalysisData||{};
  const rawModel=$('sModel')?.value||sneaker.model_no||sneaker.model||capture.model_no||capture.model||'';
  const model=cleanSneakerModel(rawModel);
- if(model)return model;
+ if(model)return rememberSneakerSearchQuery(model);
  const keyword=($('sKeyword')?.value||'').trim();
- if(keyword)return keyword;
+ if(keyword)return rememberSneakerSearchQuery(keyword);
  const brand=$('sBrand')?.value||sneaker.brand||capture.brand||'';
  const product=sneaker.product_name||sneaker.product_title||capture.product_name||capture.product_title||'';
  const color=sneaker.color||capture.color||'';
  const q=normalizeMainKeyword([brand,product,color].filter(Boolean).join(' '),brand,product,'스니커즈');
- return q||[brand,product,color].filter(Boolean).join(' ').trim();
+ const built=q||[brand,product,color].filter(Boolean).join(' ').trim();
+ return built?rememberSneakerSearchQuery(built):recalledSneakerSearchQuery();
 }
 function buildPoizonQuery(){return buildSneakerSearchQuery()}
 function updateKreamSearchButton(){
@@ -639,14 +650,14 @@ function kreamSearchUrl(query){const q=String(query||buildSneakerSearchQuery()).
 function connectKreamAfterRecognition(win){
  const q=buildSneakerSearchQuery();updateKreamSearchButton();
  if(!q){if(win)try{win.close()}catch(e){};return false}
- const url=kreamSearchUrl(q);try{if(win&&!win.closed)win.close()}catch(e){}
+ const url=kreamSearchUrl(q);rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();try{if(win&&!win.closed)win.close()}catch(e){}
  showKreamReturnGuide(q);setTimeout(()=>{location.href=url},350);return true
 }
 function openKreamSearch(){
  const q=buildSneakerSearchQuery();
  if(!q)return alert('먼저 상품 사진을 분석하거나 상품코드·상품명을 입력하세요.');
  if($('sKeyword')&&!$('sKeyword').value)$('sKeyword').value=q;
- saveSneakerDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
+ rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
  setAnalysisStatus('sStatus','working',`KREAM에서 ${q} 상품을 검색해 이동합니다.`);showShopMoveOverlay('KREAM',q);
  setTimeout(()=>{location.href=kreamSearchUrl(q)},250)
 }
@@ -661,7 +672,7 @@ async function openPoizonSearch(){
  const detected=cleanSneakerModel($('sModel')?.value||sneaker.model_no||capture.model_no||'');
  if($('sModel')&&!$('sModel').value&&detected)$('sModel').value=detected;
  if($('sKeyword')&&!$('sKeyword').value)$('sKeyword').value=q;
- saveSneakerDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
+ rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
  try{await navigator.clipboard.writeText(q)}catch(e){}
  setAnalysisStatus('sStatus','working',`POIZON에서 ${q} 상품을 검색해 이동합니다.`);
  showShopMoveOverlay('POIZON',q);
@@ -722,12 +733,12 @@ const WORKING_DRAFT_KEY='workingProductDraftV515';
 let draftTimer=null,restoringDraft=false;
 function collectWorkingDraft(){
  const values={};document.querySelectorAll('#m-g input,#m-g select,#m-g textarea,#m-s input,#m-s select,#m-s textarea').forEach(el=>{if(el.type!=='file'&&el.id)values[el.id]=el.value});
- return {values,generalScanData:window.generalScanData||{},sneakerScanData:window.sneakerScanData||{},generalMarketAnalysis:window.generalMarketAnalysis||{},sneakerMarketAnalysis:window.sneakerMarketAnalysis||{},savedAt:new Date().toISOString()};
+ return {values,generalScanData:window.generalScanData||{},sneakerScanData:window.sneakerScanData||{},generalMarketAnalysis:window.generalMarketAnalysis||{},sneakerMarketAnalysis:window.sneakerMarketAnalysis||{},kreamAnalysisData:window.kreamAnalysisData||{},lastSneakerQuery:buildSneakerSearchQuery()||recalledSneakerSearchQuery(),savedAt:new Date().toISOString()};
 }
 function saveWorkingDraft(){if(restoringDraft)return;try{localStorage.setItem(WORKING_DRAFT_KEY,JSON.stringify(collectWorkingDraft()))}catch(e){}}
 function scheduleDraftSave(){clearTimeout(draftTimer);draftTimer=setTimeout(saveWorkingDraft,180)}
 function restoreWorkingDraft(){
- restoringDraft=true;try{const d=JSON.parse(localStorage.getItem(WORKING_DRAFT_KEY)||'{}');Object.entries(d.values||{}).forEach(([id,v])=>{const el=$(id);if(el&&el.type!=='file')el.value=v});window.generalScanData=d.generalScanData||{};window.sneakerScanData=d.sneakerScanData||{};window.generalMarketAnalysis=d.generalMarketAnalysis||{};window.sneakerMarketAnalysis=d.sneakerMarketAnalysis||{};toggleCustomStore();toggleCustomDiscount();if(Object.keys(window.generalScanData).length)showGeneralScan(window.generalScanData);if(Object.keys(window.generalMarketAnalysis).length)renderMarketAnalysis(window.generalMarketAnalysis);if(Object.keys(window.sneakerMarketAnalysis).length)renderSneakerMarketAnalysis(window.sneakerMarketAnalysis)}catch(e){}finally{restoringDraft=false}}
+ restoringDraft=true;try{const d=JSON.parse(localStorage.getItem(WORKING_DRAFT_KEY)||'{}');Object.entries(d.values||{}).forEach(([id,v])=>{const el=$(id);if(el&&el.type!=='file')el.value=v});window.generalScanData=d.generalScanData||{};window.sneakerScanData=d.sneakerScanData||{};window.generalMarketAnalysis=d.generalMarketAnalysis||{};window.sneakerMarketAnalysis=d.sneakerMarketAnalysis||{};window.kreamAnalysisData=d.kreamAnalysisData||{};if(d.lastSneakerQuery)rememberSneakerSearchQuery(d.lastSneakerQuery);toggleCustomStore();toggleCustomDiscount();if(Object.keys(window.generalScanData).length)showGeneralScan(window.generalScanData);if(Object.keys(window.generalMarketAnalysis).length)renderMarketAnalysis(window.generalMarketAnalysis);if(Object.keys(window.sneakerMarketAnalysis).length)renderSneakerMarketAnalysis(window.sneakerMarketAnalysis);calcDiscount();calcG();calcS();checkDup();updateKreamSearchButton()}catch(e){}finally{restoringDraft=false}}
 function resetCurrentProduct(){
  const confirmKey='resetCurrentProductConfirmedOnce';
  if(localStorage.getItem(confirmKey)!=='1'){
@@ -736,7 +747,7 @@ function resetCurrentProduct(){
  }
  restoringDraft=true;
  try{
-  [WORKING_DRAFT_KEY,'sneakerDraftV32','sneakerDraftV31','sneakerDraftV27'].forEach(k=>localStorage.removeItem(k));
+  [WORKING_DRAFT_KEY,LAST_SNEAKER_QUERY_KEY,'sneakerDraftV32','sneakerDraftV31','sneakerDraftV27'].forEach(k=>localStorage.removeItem(k));
   const blankNumberIds=['gSale','gCost','gOther','sListPrice','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale','sOther','sSize'];
   blankNumberIds.forEach(id=>{const el=$(id);if(el)el.value=''});
   const blankIds=['gName','gStoreCustom','gKeyword','gMemo','sKeyword','sModel','sStore'];
@@ -747,7 +758,7 @@ function resetCurrentProduct(){
   if($('sDiscount'))$('sDiscount').value='';
   if($('sBrand'))$('sBrand').selectedIndex=0;
   for(let i=1;i<=5;i++){if($('sTradeDate'+i))$('sTradeDate'+i).value='';if($('sTradePrice'+i))$('sTradePrice'+i).value=''}
-  window.generalScanData={};window.sneakerScanData={};window.generalMarketAnalysis={};window.sneakerMarketAnalysis={};window.kreamSizeRows=[];window.kreamVisibleTradeCount=0;
+  window.generalScanData={};window.sneakerScanData={};window.generalMarketAnalysis={};window.sneakerMarketAnalysis={};window.kreamSizeRows=[];window.kreamVisibleTradeCount=0;window.kreamAnalysisData={};
   if($('gScanResult'))$('gScanResult').classList.remove('show');
   if($('gScanGrid'))$('gScanGrid').innerHTML='';
   if($('sScanResult'))$('sScanResult').classList.remove('show');
@@ -774,4 +785,16 @@ function autoAnalyzeCurrentIfNeeded(){
 window.addEventListener('pageshow',autoAnalyzeCurrentIfNeeded);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoAnalyzeCurrentIfNeeded()});
 
 loadSettings();restoreSneakerDraft();restoreWorkingDraft();calcDiscount();calcG();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateKreamSearchButton();if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+window.addEventListener('pageshow',()=>{
+ try{
+  restoreWorkingDraft();
+  updateKreamSearchButton();
+  const q=buildSneakerSearchQuery();
+  if(q&&$('sStatus')&&!$('sStatus').classList.contains('working')){
+   setAnalysisStatus('sStatus','success',`이전에 확인하던 상품정보가 유지되고 있습니다 · ${q} · KREAM 또는 POIZON 버튼으로 바로 검색할 수 있습니다.`);
+  }
+  const overlay=document.getElementById('shopMoveOverlay');if(overlay)overlay.style.display='none';
+ }catch(e){}
+});
 </script></body></html>
