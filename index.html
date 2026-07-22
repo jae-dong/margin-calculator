@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.2.5</title><style>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#183b66"><link rel="manifest" href="/manifest.json"><title>올데이픽 AI 소싱 v5.2.6</title><style>
 :root{--n:#1657a6;--n2:#0d3f7a;--sky:#eaf5ff;--mint:#e8fbf5;--bg:#f7faff;--line:#d7e4f2;--g:#087a55;--r:#c73545;--o:#b76500;--purple:#7357c7}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,'Noto Sans KR',sans-serif;color:#111}.app{max-width:760px;margin:auto;padding:14px 12px 165px}.hero{background:linear-gradient(135deg,#102a48,var(--n));color:#fff;border-radius:22px;padding:22px}.hero h1{margin:0 0 8px;font-size:25px}.hero p{margin:0;font-size:13px;font-weight:700}.ver{display:inline-block;margin-top:9px;padding:4px 9px;border-radius:999px;background:#ffffff22;font-size:11px;font-weight:900}.tabs,.modes,.actions,.grid2,.metrics{display:grid;gap:9px}.tabs{grid-template-columns:repeat(5,1fr);margin:12px 0}.modes{grid-template-columns:1fr 1fr}.actions,.grid2{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(3,1fr)}button{border:0;border-radius:13px;padding:12px;font-weight:900;cursor:pointer}.tab,.mode,.secondary{background:#e7ebf1;color:#1e2a36}.tab.active,.mode.active,.primary{background:var(--n);color:#fff}.danger{background:#fdeaea;color:var(--r)}.page,.modepage{display:none}.page.active,.modepage.active{display:block}#m-g:not(.active),#m-s:not(.active){display:none!important}.card{background:#fff;border-radius:19px;padding:17px;margin:13px 0;box-shadow:0 7px 22px #00000010}.card h2{font-size:18px;margin:0 0 14px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:900;margin-bottom:7px}input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:13px;font:inherit}textarea{min-height:110px}.metric{background:#f0f3f7;border-radius:15px;padding:13px 7px;text-align:center}.metric.good{background:#eef9f1;border:1px solid #a7dcb4}.lab{font-size:11px;font-weight:900;color:#5d6874}.val{font-size:21px;font-weight:900;margin-top:6px}.decision,.alert{padding:14px;border-radius:14px;font-weight:900;line-height:1.5;margin-top:11px}.buy,.ok{background:#eaf7ef;color:var(--g);border:1px solid #b7e1c2}.review,.warn{background:#fff4e5;color:var(--o);border:1px solid #ffd8a8}.stop{background:#fff0f0;color:var(--r);border:1px solid #ffc9c9}.alert{display:none;font-size:13px}.alert.ok,.alert.warn{display:block}.sub,.meta{font-size:12px;color:#66717d;line-height:1.55;white-space:pre-wrap;margin-top:7px}.record{border:1px solid var(--line);border-radius:14px;padding:12px;margin:9px 0;background:#fbfcfd}.record.clickable{cursor:pointer;transition:.15s}.record.clickable:active{transform:scale(.99);background:#eef6ff}.record .openhint{font-size:11px;color:#1657a6;font-weight:900;margin-top:7px}.record-layout{display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;align-items:start}.record-thumb{width:82px;height:82px;border-radius:13px;object-fit:cover;background:#eef3f8;border:1px solid #d7e4f2}.record-thumb.empty{display:flex;align-items:center;justify-content:center;font-size:28px;color:#8b98a6}.record-body{min-width:0}.record-body b{display:block;overflow-wrap:anywhere}@media(max-width:390px){.record-layout{grid-template-columns:70px minmax(0,1fr)}.record-thumb{width:70px;height:70px}}.empty{text-align:center;color:#7d8792;padding:20px}.sticky{position:fixed;z-index:999;bottom:0;left:0;right:0;background:#fffffff2;border-top:1px solid var(--line);padding:8px}.sticky>div{max-width:760px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:7px}.quick button{padding:8px 3px;font-size:12px}@media(max-width:520px){
  html,body{width:100%;max-width:100%;overflow-x:hidden}
  body{padding-top:env(safe-area-inset-top)}
@@ -71,7 +71,7 @@ button{transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}butt
 .auto-market-note{background:#eef6ff;border:1px solid #c8def7;border-radius:12px;padding:10px;margin-top:10px;font-size:12px;font-weight:800;color:#315271}
 
 </style></head><body><div class="app">
-<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.2.5</span></header>
+<header class="hero"><h1>올데이픽 AI 소싱계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.2.6</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main id="p-sourcing" class="page active"><div class="modes"><button id="mb-g" class="mode active" onclick="mode('g')">일반상품 소싱</button><button id="mb-s" class="mode" onclick="mode('s')">스니커즈 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section id="m-g" class="modepage active">
@@ -645,21 +645,39 @@ function showShopMoveOverlay(shop,query){
  el.style.display='flex';
 }
 
-function showKreamReturnGuide(query){const st=$('sStatus');if(st)st.innerHTML=`KREAM 검색 화면으로 이동합니다. 확인 후 휴대폰의 <b>뒤로가기 한 번</b>을 누르면 계산기로 돌아옵니다.${query?` · 검색어 ${esc(query)}`:''}`}
+function hideShopMoveOverlay(){const el=document.getElementById('shopMoveOverlay');if(el)el.style.display='none'}
+function openShopKeepingApp(url,shop,query,preparedWindow){
+ saveSneakerDraft();saveWorkingDraft();rememberSneakerSearchQuery(query||'');
+ let w=preparedWindow;
+ try{
+  if(w&&!w.closed){w.location.replace(url);try{w.focus()}catch(e){};setTimeout(hideShopMoveOverlay,700);return true}
+ }catch(e){}
+ try{
+  w=window.open(url,'_blank');
+  if(w){try{w.focus()}catch(e){};setTimeout(hideShopMoveOverlay,700);return true}
+ }catch(e){}
+ // 팝업이 차단된 경우 현재 웹을 종료시키지 않고 사용자가 직접 열 수 있는 링크를 표시합니다.
+ hideShopMoveOverlay();
+ const st=$('sStatus');
+ if(st)st.innerHTML=`${esc(shop)} 새 창 열기가 차단되었습니다. <a href="${esc(url)}" target="_blank" rel="noopener" style="font-weight:900;color:#0b62c4">여기를 눌러 검색</a>`;
+ return false
+}
+function showKreamReturnGuide(query){const st=$('sStatus');if(st)st.innerHTML=`KREAM 검색 화면을 새 창으로 엽니다. 확인 후 <b>뒤로가기 또는 창 닫기</b>를 누르면 이 계산기 화면이 그대로 남아 있습니다.${query?` · 검색어 ${esc(query)}`:''}`}
 function kreamSearchUrl(query){const q=String(query||buildSneakerSearchQuery()).trim();return q?'https://kream.co.kr/search?keyword='+encodeURIComponent(q):'https://kream.co.kr/'}
 function connectKreamAfterRecognition(win){
  const q=buildSneakerSearchQuery();updateKreamSearchButton();
  if(!q){if(win)try{win.close()}catch(e){};return false}
- const url=kreamSearchUrl(q);rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();try{if(win&&!win.closed)win.close()}catch(e){}
- showKreamReturnGuide(q);setTimeout(()=>{location.href=url},350);return true
+ const url=kreamSearchUrl(q);rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();
+ showKreamReturnGuide(q);showShopMoveOverlay('KREAM',q);
+ setTimeout(()=>openShopKeepingApp(url,'KREAM',q,win),250);return true
 }
 function openKreamSearch(){
  const q=buildSneakerSearchQuery();
  if(!q)return alert('먼저 상품 사진을 분석하거나 상품코드·상품명을 입력하세요.');
  if($('sKeyword')&&!$('sKeyword').value)$('sKeyword').value=q;
  rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
- setAnalysisStatus('sStatus','working',`KREAM에서 ${q} 상품을 검색해 이동합니다.`);showShopMoveOverlay('KREAM',q);
- setTimeout(()=>{location.href=kreamSearchUrl(q)},250)
+ setAnalysisStatus('sStatus','working',`KREAM에서 ${q} 상품을 새 창으로 검색합니다.`);showShopMoveOverlay('KREAM',q);
+ setTimeout(()=>openShopKeepingApp(kreamSearchUrl(q),'KREAM',q,null),180)
 }
 function poizonSearchUrl(q){
  const e=encodeURIComponent(String(q||'').trim());
@@ -674,9 +692,9 @@ async function openPoizonSearch(){
  if($('sKeyword')&&!$('sKeyword').value)$('sKeyword').value=q;
  rememberSneakerSearchQuery(q);saveSneakerDraft();saveWorkingDraft();updateKreamSearchButton();analyzeSneakerMarketKeyword(true).catch(()=>{});
  try{await navigator.clipboard.writeText(q)}catch(e){}
- setAnalysisStatus('sStatus','working',`POIZON에서 ${q} 상품을 검색해 이동합니다.`);
+ setAnalysisStatus('sStatus','working',`POIZON에서 ${q} 상품을 새 창으로 검색합니다.`);
  showShopMoveOverlay('POIZON',q);
- setTimeout(()=>{window.location.assign(poizonSearchUrl(q))},250);
+ setTimeout(()=>openShopKeepingApp(poizonSearchUrl(q),'POIZON',q,null),180);
 }
 
 function checkDup(){const a=$('dupAlert'),m=norm($('sModel').value),z=n('sSize');if(!m){a.className='alert';return}const h=get('sRecords').find(x=>norm(x.model)===m&&(!z||x.size===z));if(!h){a.className='alert';return}a.className='alert warn';a.textContent=`이전에 확인한 제품입니다. 지난 구매가 ${won(h.buy)} · 평균 판매가 순이익 ${won(h.avgProfit||0)}`}
