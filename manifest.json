@@ -3,7 +3,7 @@
   "name": "ALLDAYPICK 소싱 계산기",
   "short_name": "ALLDAYPICK",
   "description": "일반상품 소싱과 스니커즈 리셀 마진 분석",
-  "start_url": "/?source=pwa&v=5.2.6",
+  "start_url": "/?source=pwa&v=5.3.2",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f3f5f8",
