@@ -576,7 +576,7 @@ def export_excel():
         ws.write('A6','장바구니',text); ws.write_number('B6',len(cart),integer)
         ws.write('A8','다운로드 일시',head); ws.write_datetime('B8',datetime.now(),dtfmt)
         ws.write('A10','세금 계산 기준',head); ws.write('B10','설정값',head)
-        labels=[('직장 연봉',settings.get('annualSalary',100000000),'money'),('연 매출',settings.get('annualSales',500000000),'money'),('사업 마진율',settings.get('businessMargin',25),'percent'),('종소세·지방소득세율',settings.get('incomeTaxRate',42),'percent'),('쿠팡 수수료율',settings.get('fee',11.8),'percent'),('배송비',settings.get('ship',4000),'money')]
+        labels=[('예상 소득세율',settings.get('incomeTaxRate',0),'percent'),('부가세 계산',settings.get('useVat','yes'),'text'),('일반상품 판매 수수료율',settings.get('fee',11.8),'percent'),('일반상품 배송비',settings.get('ship',4000),'money'),('스니커즈 판매 수수료율',settings.get('sFee',6),'percent'),('스니커즈 배송비',settings.get('sShip',3000),'money')]
         for r,(lab,val,kind) in enumerate(labels,11):
             ws.write(r-1,0,lab,text)
             fmt=money if kind=='money' else percent
