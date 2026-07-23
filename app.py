@@ -548,6 +548,8 @@ def export_excel():
         general=(body.get('general') or [])[:2000]
         sneakers=(body.get('sneakers') or [])[:2000]
         cart=(body.get('cart') or [])[:3000]
+        receipts=(body.get('receipts') or [])[:3000]
+        receipt_only=bool(body.get('receiptOnly'))
         settings=body.get('settings') or {}
 
         out=BytesIO()
@@ -573,6 +575,7 @@ def export_excel():
         ws.write('A3','구분',head); ws.write('B3','건수',head)
         ws.write('A4','일반상품 기록',text); ws.write_number('B4',len(general),integer)
         ws.write('A5','스니커즈 기록',text); ws.write_number('B5',len(sneakers),integer)
+        ws.write('A6','영수증 기록',text); ws.write_number('B6',len(receipts),integer)
         ws.write('A6','장바구니',text); ws.write_number('B6',len(cart),integer)
         ws.write('A8','다운로드 일시',head); ws.write_datetime('B8',datetime.now(),dtfmt)
         ws.write('A10','세금 계산 기준',head); ws.write('B10','설정값',head)
@@ -633,6 +636,24 @@ def export_excel():
         ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,rr-1),len(headers)-1)
         ws.set_column(0,3,18); ws.set_column(4,17,15); ws.set_column(18,18,38)
 
+        # 영수증 기록 (인식 완료 즉시 브라우저에 자동 저장된 데이터)
+        ws=wb.add_worksheet('영수증 기록')
+        headers=['자동 저장일시','영수증 구매일','매장명','영수증 총액','상품 순번','상품명','수량','상품금액','인식 신뢰도','원본 파일명']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        rr=1
+        for x in receipts:
+            items=x.get('items') or [{}]
+            for seq,item in enumerate(items,1):
+                vals=[parse_dt(x.get('savedAt') or x.get('date')),x.get('purchaseDate',''),x.get('store',''),x.get('total',0),seq,item.get('name',''),item.get('qty',1),item.get('amount',0),x.get('confidence',''),x.get('sourceFile','')]
+                for c,v in enumerate(vals):
+                    fmt=dtfmt if c==0 and isinstance(v,datetime) else (money if c in (3,7) else (integer if c in (4,6) else text))
+                    if isinstance(v,(int,float)) and c!=0: ws.write_number(rr,c,float(v),fmt)
+                    elif isinstance(v,datetime): ws.write_datetime(rr,c,v,fmt)
+                    else: ws.write(rr,c,v,fmt)
+                rr+=1
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,rr-1),len(headers)-1)
+        ws.set_column(0,0,19); ws.set_column(1,2,18); ws.set_column(3,4,14); ws.set_column(5,5,38); ws.set_column(6,7,14); ws.set_column(8,9,18)
+
         # 장바구니
         ws=wb.add_worksheet('장바구니')
         headers=['담은 순서','구분','상품명','소싱매장','수량','개당 매입가','총 매입액','개당 예상 순이익','예상 총이익','판매가/평균체결가','저장일시']
@@ -650,7 +671,7 @@ def export_excel():
         ws.set_column(0,1,12); ws.set_column(2,3,28); ws.set_column(4,9,16); ws.set_column(10,10,18)
 
         wb.close(); out.seek(0)
-        filename='올데이픽_소싱데이터_'+datetime.now().strftime('%Y%m%d_%H%M')+'.xlsx'
+        filename=('픽셀_영수증기록_' if receipt_only else '픽셀_소싱데이터_')+datetime.now().strftime('%Y%m%d_%H%M')+'.xlsx'
         return send_file(out,as_attachment=True,download_name=filename,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as x:
         return jsonify(error=f'엑셀 생성 오류: {x}'),500
