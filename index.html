@@ -129,7 +129,7 @@ button:hover{filter:brightness(1.02)}
  .store-cart-row{grid-template-columns:1fr 112px;gap:9px}.store-cart-button{height:50px;padding:0 10px}
 }
 </style></head><body><div class="app">
-<header class="hero"><h1>ALLDAYPICK 소싱 계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.4.4</span></header>
+<header class="hero"><h1>ALLDAYPICK 소싱 계산기</h1><p>일반상품 소싱과 스니커즈 리셀을 각각 독립적으로 분석합니다.</p><span class="ver">v5.4.5</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main class="page active" id="p-sourcing"><div class="modes"><button class="mode active" id="mb-g" onclick="mode('g')">일반상품 소싱</button><button class="mode" id="mb-s" onclick="mode('s')">스니커즈 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section class="modepage active" id="m-g">
@@ -949,10 +949,13 @@ function resetCurrentProduct(){
   if(!confirm('현재 확인 중인 일반상품·스니커즈 정보를 초기화하시겠습니까? 저장 기록과 설정은 삭제되지 않습니다.'))return;
   localStorage.setItem(confirmKey,'1');
  }
+ // 자동 연결 선택은 상품정보가 아니라 사용자 설정이므로 초기화해도 마지막 선택값을 유지합니다.
+ const keepGeneralAuto=$('gAutoShop')?.value||localStorage.getItem('generalAutoShop')||'coupang';
+ const keepSneakerAuto=$('sAutoShop')?.value||getAutoShopPreference()||'kream';
  restoringDraft=true;
  try{
   [WORKING_DRAFT_KEY,LAST_SNEAKER_QUERY_KEY,'sneakerDraftV32','sneakerDraftV31','sneakerDraftV27'].forEach(k=>localStorage.removeItem(k));
-  const blankNumberIds=['gSale','nSale','gCost','gOther','sListPrice','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale','sOther','sSize','pHighSale','pAvgSale','pLowSale'];
+  const blankNumberIds=['gSale','nSale','gCost','nCostMirror','gOther','sListPrice','sCustomDiscount','sBuy','sHighSale','sAvgSale','sLowSale','sOther','sSize','pHighSale','pAvgSale','pLowSale'];
   blankNumberIds.forEach(id=>{const el=$(id);if(el)el.value=''});
   const blankIds=['gName','gStoreCustom','nStoreCustom','gKeyword','gMemo','sKeyword','sModel','sStore'];
   blankIds.forEach(id=>{const el=$(id);if(el)el.value=''});
@@ -981,7 +984,14 @@ function resetCurrentProduct(){
   ['sPHigh','sPAvg','sPLow','pPHigh','pPAvg','pPLow'].forEach(id=>{if($(id))$(id).textContent='0원'});
   if($('sDecision')){$('sDecision').className='decision review';$('sDecision').textContent='KREAM 캡처를 올려주세요.'}if($('pDecision')){$('pDecision').className='decision review';$('pDecision').textContent='POIZON 캡처를 올려주세요.'}
   if($('sProfitDetails'))$('sProfitDetails').innerHTML='';
-  toggleCustomStore();toggleCustomDiscount();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);resetMarketAnalysis();resetSneakerMarketAnalysis();calcDiscount();calcG();calcN();calcS();validateComp();updateCoupangButton();updateKreamSearchButton();
+  // 일반상품 가격과 자동 키워드 경쟁·수요 분석값을 화면과 저장 초안에서 모두 비웁니다.
+  resetMarketAnalysis();resetSneakerMarketAnalysis();
+  if($('gAutoShop'))$('gAutoShop').value=keepGeneralAuto;
+  if($('sAutoShop'))$('sAutoShop').value=keepSneakerAuto;
+  localStorage.setItem('generalAutoShop',keepGeneralAuto);
+  localStorage.setItem(AUTO_SHOP_KEY,keepSneakerAuto);
+  updateGeneralAutoShopHint();updateAutoShopHint();
+  toggleCustomStore();toggleCustomDiscount();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);calcDiscount();calcG();calcN();calcS();validateComp();updateCoupangButton();updateKreamSearchButton();
  }finally{restoringDraft=false}
  saveWorkingDraft();
 }
