@@ -1,13 +1,13 @@
 {
   "id": "/",
-  "name": "ALLDAYPICK 소싱 계산기",
-  "short_name": "ALLDAYPICK",
-  "description": "일반상품 소싱과 스니커즈 리셀 마진 분석",
-  "start_url": "/?source=pwa&v=5.3.3",
+  "name": "리셀 PICK 소싱·마진 계산기",
+  "short_name": "리셀 PICK",
+  "description": "브랜드 일반상품 소싱과 KREAM·POIZON 리셀 수익 및 마진 분석",
+  "start_url": "/?source=pwa&v=5.4.7",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f3f5f8",
-  "theme_color": "#1657a6",
+  "theme_color": "#0b1739",
   "icons": [
     {
       "src": "/icon-192.png",
