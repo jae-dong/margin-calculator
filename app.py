@@ -182,6 +182,40 @@ def _friendly_openai_error(exc):
         return 'AI 서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.',504
     return 'AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',502
 
+
+# 각 실제 OpenAI 호출의 응답 토큰을 기준으로 예상 비용을 계산한다.
+# 이 값은 앱 내 사용량 표시용이며 OpenAI 결제 페이지의 실제 청구액과 소수점 차이가 날 수 있다.
+_MODEL_PRICES={
+    'gpt-4.1-mini':(0.40,1.60),
+    'gpt-4.1':(2.00,8.00),
+    'gpt-4o-mini':(0.15,0.60),
+    'gpt-4o':(2.50,10.00),
+}
+def _usage_value(obj,*names):
+    for name in names:
+        try:
+            value=getattr(obj,name,None)
+            if value is None and isinstance(obj,dict): value=obj.get(name)
+            if value is not None:return int(value or 0)
+        except Exception:pass
+    return 0
+
+def _api_usage_meta(response,model,kind='analysis'):
+    usage=getattr(response,'usage',None)
+    input_tokens=_usage_value(usage,'input_tokens','prompt_tokens')
+    output_tokens=_usage_value(usage,'output_tokens','completion_tokens')
+    total_tokens=_usage_value(usage,'total_tokens') or input_tokens+output_tokens
+    model_name=str(model or '')
+    input_rate,output_rate=_MODEL_PRICES.get(model_name,(float(os.getenv('OPENAI_INPUT_USD_PER_M','0.40')),float(os.getenv('OPENAI_OUTPUT_USD_PER_M','1.60'))))
+    estimated=(input_tokens*input_rate+output_tokens*output_rate)/1_000_000
+    return {'month':datetime.utcnow().strftime('%Y-%m'),'model':model_name,'kind':kind,'input_tokens':input_tokens,'output_tokens':output_tokens,'total_tokens':total_tokens,'estimated_usd':round(estimated,8),'cached':False,'occurred_at':datetime.utcnow().isoformat(timespec='seconds')+'Z'}
+
+def _cached_result(value):
+    try:out=json.loads(json.dumps(value,ensure_ascii=False))
+    except Exception:out=dict(value or {})
+    out['_api_usage']={'month':datetime.utcnow().strftime('%Y-%m'),'model':'','kind':'cache','input_tokens':0,'output_tokens':0,'total_tokens':0,'estimated_usd':0,'cached':True,'occurred_at':datetime.utcnow().isoformat(timespec='seconds')+'Z'}
+    return out
+
 def vision(prompt,tokens=500,multiple=False):
     files=request.files.getlist('images') if multiple else [request.files.get('image')]
     files=[f for f in files if f]
@@ -195,13 +229,14 @@ def vision(prompt,tokens=500,multiple=False):
         blob=f.read();blobs.append((mime,blob));digest.update(blob)
     cache_key='vision:'+digest.hexdigest()
     cached=_cache_get(cache_key,90*86400)
-    if cached is not None:return cached,None
+    if cached is not None:return _cached_result(cached),None
     for mime,blob in blobs:
         url=f'data:{mime};base64,{base64.b64encode(blob).decode()}'
         content.append({'type':'input_image','image_url':url,'detail':'low'})
     try:
-        r=cli().responses.create(model=os.getenv('OPENAI_VISION_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),input=[{'role':'user','content':content}],max_output_tokens=tokens)
-        data=parse(r.output_text);_cache_set(cache_key,data);return data,None
+        model=os.getenv('OPENAI_VISION_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
+        r=cli().responses.create(model=model,input=[{'role':'user','content':content}],max_output_tokens=tokens)
+        data=parse(r.output_text);data['_api_usage']=_api_usage_meta(r,model,'vision');_cache_set(cache_key,data);return data,None
     except Exception as exc:
         return None,_friendly_openai_error(exc)
 @app.errorhandler(413)
@@ -451,8 +486,9 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
         response=None
         for tool_type in ('web_search','web_search_preview'):
             try:
+                model=os.getenv('OPENAI_WEB_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
                 response=client.responses.create(
-                    model=os.getenv('OPENAI_WEB_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),
+                    model=model,
                     tools=[{'type':tool_type}],
                     input=prompt,
                     max_output_tokens=1800
@@ -463,6 +499,7 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
         if response is None:
             raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
         d=parse(response.output_text)
+        d['_api_usage']=_api_usage_meta(response,model,'web_search')
         d['checked_at']='2026-07-18'
         d['source_url']=url
         return jsonify(d)
@@ -481,7 +518,7 @@ def analyze_market_keyword():
         if not raw_keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
         keyword_cache_key='keyword:'+re.sub(r'\s+',' ',raw_keyword.lower()).strip()
         cached=_cache_get(keyword_cache_key,30*86400)
-        if cached is not None:return jsonify(cached)
+        if cached is not None:return jsonify(_cached_result(cached))
         context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
         prompt=f"""한국 온라인 쇼핑 상품을 분석한다.
 
@@ -515,8 +552,9 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
         last_error=None
         for tool_type in ('web_search','web_search_preview'):
             try:
+                model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
                 response=client.responses.create(
-                    model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),
+                    model=model,
                     tools=[{'type':tool_type}],
                     input=prompt,
                     max_output_tokens=750
@@ -526,6 +564,7 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
                 last_error=exc
         if response is None: raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
         d=parse(response.output_text)
+        d['_api_usage']=_api_usage_meta(response,model,'keyword_search')
         for k in ('demand_score','competition_score','sourcing_score'):
             try:d[k]=max(0,min(100,int(float(d.get(k) or 0))))
             except:d[k]=0
