@@ -1,4 +1,4 @@
-import base64,json,os,re
+import base64,json,os,re,hashlib,time,threading
 import json5
 from io import BytesIO
 from datetime import datetime
@@ -11,7 +11,7 @@ ALLOWED={'image/jpeg','image/png','image/webp'}
 def cli():
     k=os.getenv('OPENAI_API_KEY')
     if not k: raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')
-    return OpenAI(api_key=k, timeout=75.0, max_retries=2)
+    return OpenAI(api_key=k, timeout=60.0, max_retries=1)
 def parse(t):
     raw=(t or '').strip()
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',raw,flags=re.I|re.S).strip()
@@ -150,18 +150,60 @@ def normalize_sneaker_result(d):
     d.pop('model_candidates',None)
     return d
 
+# 짧은 서버 메모리 캐시: 같은 서버 인스턴스에서 같은 사진/키워드가 반복될 때 API 재호출 방지
+_CACHE={}
+_CACHE_LOCK=threading.Lock()
+_CACHE_MAX=1000
+
+def _cache_get(key,ttl):
+    now=time.time()
+    with _CACHE_LOCK:
+        row=_CACHE.get(key)
+        if not row:return None
+        if now-row[0]>ttl:
+            _CACHE.pop(key,None);return None
+        return row[1]
+
+def _cache_set(key,value):
+    with _CACHE_LOCK:
+        if len(_CACHE)>=_CACHE_MAX:
+            for k,_ in sorted(_CACHE.items(),key=lambda x:x[1][0])[:100]:_CACHE.pop(k,None)
+        _CACHE[key]=(time.time(),value)
+
+def _friendly_openai_error(exc):
+    msg=str(exc or '')
+    if 'insufficient_quota' in msg or 'exceeded your current quota' in msg:
+        return 'AI 분석 사용 한도가 소진되었습니다. OpenAI API 크레딧과 월 지출 한도를 확인해 주세요.',429
+    if 'rate_limit' in msg.lower() or '429' in msg:
+        return 'AI 요청이 잠시 몰렸습니다. 잠시 후 다시 시도해 주세요.',429
+    if '401' in msg or 'api key' in msg.lower():
+        return 'AI 서버 인증 설정을 확인해 주세요.',401
+    if 'timeout' in msg.lower():
+        return 'AI 서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.',504
+    return 'AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',502
+
 def vision(prompt,tokens=500,multiple=False):
     files=request.files.getlist('images') if multiple else [request.files.get('image')]
     files=[f for f in files if f]
     if not files: return None,('사진 파일이 없습니다.',400)
     content=[{'type':'input_text','text':prompt}]
-    for f in files[:10]:
+    digest=hashlib.sha256(prompt.encode('utf-8'))
+    blobs=[]
+    for f in files[:6]:
         mime=f.mimetype or 'image/jpeg'
         if mime not in ALLOWED:return None,('JPG, PNG, WEBP만 지원합니다.',400)
-        url=f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
-        content.append({'type':'input_image','image_url':url})
-    r=cli().responses.create(model=os.getenv('OPENAI_MODEL','gpt-4.1-mini'),input=[{'role':'user','content':content}],max_output_tokens=tokens)
-    return parse(r.output_text),None
+        blob=f.read();blobs.append((mime,blob));digest.update(blob)
+    cache_key='vision:'+digest.hexdigest()
+    cached=_cache_get(cache_key,90*86400)
+    if cached is not None:return cached,None
+    for mime,blob in blobs:
+        url=f'data:{mime};base64,{base64.b64encode(blob).decode()}'
+        content.append({'type':'input_image','image_url':url,'detail':'low'})
+    try:
+        r=cli().responses.create(model=os.getenv('OPENAI_VISION_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),input=[{'role':'user','content':content}],max_output_tokens=tokens)
+        data=parse(r.output_text);_cache_set(cache_key,data);return data,None
+    except Exception as exc:
+        return None,_friendly_openai_error(exc)
 @app.errorhandler(413)
 def too_large(_):
     if request.path.startswith('/api/'): return jsonify(error='사진 용량이 너무 큽니다. 최신 앱은 전송 전 자동 압축합니다. 새로고침 후 다시 시도하세요.'),413
@@ -209,26 +251,26 @@ def general_universal():
 
 추가 지시: 입력 사진은 상품 본체, 포장 앞면/뒷면, 매장 가격표, 바코드, 신발 박스 라벨 중 하나 또는 여러 장이다. 사진 종류를 자동 분류하고 여러 장이면 같은 상품의 정보로 합쳐라. 가격표가 있으면 이미 할인 적용된 실제 표시 결제가격을 price에 넣어라. 서로 충돌하는 값은 임의로 확정하지 말고 warnings에 적어라. 신발은 내부 관리번호가 아니라 실제 브랜드 스타일코드를 product_code로 선택한다.
 """
-        d,e=vision(prompt,1400,multiple=multiple)
+        d,e=vision(prompt,800,multiple=multiple)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'일반상품 통합 인식 오류: {x}'),502
 
 @app.post('/api/recognize-product')
 def product():
     try:
-        d,e=vision(GENERAL_PRODUCT_PROMPT,1200)
+        d,e=vision(GENERAL_PRODUCT_PROMPT,700)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'상품 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-price-tag')
 def price():
     try:
-        d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',1200)
+        d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',700)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'가격표 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-receipt')
 def receipt():
     try:
-        d,e=vision('한국 마트 영수증을 분석한다. 실제로 확인되는 내용만 사용한다. JSON 하나만 반환: {"store":"","date":"","total":0,"items":[{"name":"","qty":1,"amount":0}],"confidence":"높음|보통|낮음"}',900)
+        d,e=vision('한국 마트 영수증을 분석한다. 실제로 확인되는 내용만 사용한다. JSON 하나만 반환: {"store":"","date":"","total":0,"items":[{"name":"","qty":1,"amount":0}],"confidence":"높음|보통|낮음"}',550)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
     except Exception as x:return jsonify(error=f'영수증 인식 오류: {x}'),502
 @app.post('/api/recognize-sneaker-label')
@@ -246,7 +288,7 @@ def sneaker():
 
 설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:
 {"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","product_name":"","size":0,"us_size":"","color":"","barcode":"","confidence":"높음|보통|낮음"}'''
-        d,e=vision(prompt,900)
+        d,e=vision(prompt,600)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'신발 라벨 인식 오류: {x}'),502
 
@@ -255,7 +297,7 @@ def sneaker():
 def sneaker_batch():
     try:
         prompt='여러 장의 사진을 하나의 스니커즈 소싱 건으로 통합 분석한다. 사진들은 신발 박스 라벨, 아울렛 가격표, KREAM 체결 거래, 판매입찰, 구매입찰 화면이 섞여 있을 수 있다. 먼저 각 사진 유형을 분류한 뒤 같은 상품·같은 사이즈의 정보만 합친다. 실제 화면에 보이는 값만 사용하고 추측하지 않는다.\n\n모델번호 규칙: 브랜드 스타일코드를 최우선으로 선택한다. 바코드 아래 긴 문자열·EAN·UPC·내부 물류번호는 모델번호가 아니다. NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 있으면 model_no는 U9060ECA, internal_code는 NBPDFS193I, barcode는 NBPDFS193I39240이다.\n사이즈 규칙: 한국/JP mm 220~320을 우선하고 US 사이즈와 혼동하지 않는다.\n가격표 규칙: 가격표에 이미 할인 적용되어 크게 표시된 현재 판매가를 sale_price에 넣는다. 정상가는 list_price다. 가격표의 기존 할인율은 shown_discount_rate이며 사용자의 추가 할인율과 합산하지 않는다.\nKREAM 규칙: 실제 체결 거래만 trades에 넣고 날짜는 YYYY-MM-DD, 가격은 원 단위 정수로 한다. 판매입찰은 lowest_ask, 구매입찰은 highest_bid로 분리한다. 중복 체결은 제거하고 최신순 최대 10건으로 반환한다.\n서로 다른 모델이 섞이면 가장 많은 사진에서 일치하는 모델을 대표로 선택하고 conflicts에 경고를 넣는다.\n설명·마크다운 없이 완전한 JSON 하나만 반환한다. 값이 안 보이면 0 또는 빈 문자열을 쓰고 항목을 생략하지 않는다:\n{"image_types":["박스라벨","가격표","체결거래","판매입찰","구매입찰"],"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[],"internal_code":"","barcode":"","product_name":"","color":"","size":0,"us_size":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"highest_bid":0,"lowest_ask":0,"recent_price":0,"trades":[{"date":"YYYY-MM-DD","price":0}],"visible_trade_count":0,"conflicts":[],"confidence":"높음|보통|낮음"}'
-        d,e=vision(prompt,1300,multiple=True)
+        d,e=vision(prompt,850,multiple=True)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'통합 사진 분석 오류: {x}'),502
 
@@ -366,7 +408,7 @@ def kream_captures():
 한 화면에 체결 가격이 여러 개 보이면 prices 배열과 trades 배열에 위에서 아래 순서로 모두 넣는다. 날짜가 안 보이면 date는 빈 문자열로 두되 price는 반드시 보존한다. 각 거래 행에 사이즈가 같이 보이면 반드시 해당 size 행에 묶고, 여러 사이즈가 섞인 화면이면 사이즈별 rows를 따로 만든다. 최고·평균·최저는 서버가 계산하므로 억지로 계산하지 않아도 된다.
 설명이나 마크다운 없이 JSON 하나만 반환한다:
 {{"platform":"KREAM|POIZON|기타","screen_type":"체결거래|판매입찰|구매입찰|시세요약|혼합","model_no":"","product_name":"","rows":[{{"size":0,"prices":[0],"trades":[{{"date":"YYYY-MM-DD","price":0}}],"lowest_ask":0,"highest_bid":0}}],"visible_summary":{{"high":0,"avg":0,"low":0}},"visible_trade_count":0,"confidence":"높음|보통|낮음"}}'''
-        d,e=vision(prompt,1050,multiple=True)
+        d,e=vision(prompt,700,multiple=True)
         if e:return jsonify(error=e[0]),e[1]
         out=_normalize_capture_result(d,wanted_size)
         has_price=any((out.get('overall_high_price'),out.get('overall_avg_price'),out.get('overall_low_price')))
@@ -382,7 +424,7 @@ def kream_captures():
 def sneaker_outlet_tag():
     try:
         prompt='''아울렛 신발 가격표 또는 신발 박스 라벨 사진을 분석한다. 모델번호는 브랜드 스타일코드 형식을 우선하고 바코드 아래의 긴 문자열·일련번호를 모델번호로 선택하지 않는다. 예를 들어 NBPDFS193I / U9060ECA / NBPDFS193I39240가 함께 있으면 model_no는 U9060ECA, internal_code는 NBPDFS193I, barcode는 NBPDFS193I39240이다. 사진에 함께 보이는 브랜드, 모델번호, 상품명, 색상, 한국/JP 사이즈(mm), 바코드, 정상가, 가격표에 이미 할인이 적용되어 표시된 현재 판매가, 가격표의 1차 할인율을 추출한다. 가장 중요한 값은 고객이 매장에서 추가 할인을 받기 전 가격표에 적힌 할인 적용 판매가이며 반드시 sale_price에 넣는다. 정상가와 할인가가 모두 보이면 정상가는 list_price, 이미 할인 적용된 표시가는 sale_price로 정확히 구분한다. 취소선 가격·권장소비자가·정상가는 sale_price로 넣지 않는다. 여러 가격이 있으면 'SALE', '할인가', '회원가', '판매가', 가장 크거나 강조된 결제 가격 등의 문맥으로 실제 표시 할인가를 판단한다. 가격표에 적힌 할인율은 shown_discount_rate이며 이것은 이미 sale_price에 반영된 1차 할인율이다. 사용자가 별도로 적용할 추가 할인율과 혼동하거나 합산하지 않는다. 한 가격만 보여 할인가인지 확실하지 않으면 price_type을 unknown으로 하고 확인된 가격을 list_price에 넣는다. 보이지 않는 값은 0 또는 빈 문자열로 둔다. 임의 추측 금지. JSON 하나만 반환: {"brand":"나이키|뉴발란스|아디다스|언더아머|아식스|기타","model_no":"","model_candidates":[{"text":"","role":"model|internal|barcode_text|other"}],"internal_code":"","product_name":"","size":0,"color":"","barcode":"","list_price":0,"sale_price":0,"shown_discount_rate":0,"price_type":"normal|sale|unknown","confidence":"높음|보통|낮음"}'''
-        d,e=vision(prompt,900)
+        d,e=vision(prompt,600)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_sneaker_result(d))
     except Exception as x:return jsonify(error=f'아울렛 가격표 인식 오류: {x}'),502
 
@@ -437,6 +479,9 @@ def analyze_market_keyword():
         body=request.get_json(silent=True) or {}
         raw_keyword=str(body.get('keyword') or '').strip()[:160]
         if not raw_keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
+        keyword_cache_key='keyword:'+re.sub(r'\s+',' ',raw_keyword.lower()).strip()
+        cached=_cache_get(keyword_cache_key,30*86400)
+        if cached is not None:return jsonify(cached)
         context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
         prompt=f"""한국 온라인 쇼핑 상품을 분석한다.
 
@@ -474,7 +519,7 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
                     model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini')),
                     tools=[{'type':tool_type}],
                     input=prompt,
-                    max_output_tokens=1200
+                    max_output_tokens=750
                 )
                 break
             except Exception as exc:
@@ -517,6 +562,7 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
         if not d.get('recommendation') or d.get('recommendation')=='자료부족':
             ss=int(d.get('sourcing_score') or 0)
             d['recommendation']='적극 소싱' if ss>=75 else ('마진 확보 시 소싱' if ss>=55 else ('소량 테스트' if ss>=35 else '비추천'))
+        _cache_set(keyword_cache_key,d)
         return jsonify(d)
     except Exception as x:
         # 웹검색 도구 자체가 일시 실패해도 대표 키워드 기준의 보수적 분석값을 반환한다.
