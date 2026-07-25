@@ -8,8 +8,9 @@ services:
     name: resell-pick
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: python -m pip install --upgrade pip setuptools wheel && python -m pip install -r requirements.txt
     startCommand: gunicorn app:app --workers 2 --threads 4 --worker-class gthread --timeout 180 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -23,8 +24,14 @@ services:
           property: connectionString
       - key: COOKIE_SECURE
         value: "1"
+      - key: REQUIRE_LOGIN_FOR_AI
+        value: "0"
       - key: MAX_CONCURRENT_AI
         value: "4"
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
       - key: ADMIN_EMAILS
         sync: false
       - key: OPENAI_API_KEY
