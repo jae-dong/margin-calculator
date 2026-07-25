@@ -1,13 +1,112 @@
-import base64,json,os,re,hashlib,time,threading
+import base64,json,os,re,hashlib,time,threading,sqlite3
 import json5
 from io import BytesIO
-from datetime import datetime
-from flask import Flask,jsonify,request,send_from_directory,send_file
+from datetime import datetime, timedelta
+from flask import Flask,jsonify,request,send_from_directory,send_file,session
 import xlsxwriter
 from openai import OpenAI
+from werkzeug.security import generate_password_hash, check_password_hash
 app=Flask(__name__,static_folder='.')
 app.config['MAX_CONTENT_LENGTH']=24*1024*1024
+app.config['SECRET_KEY']=os.getenv('SECRET_KEY') or 'CHANGE-ME-RESELL-PICK-BETA'
+app.config['PERMANENT_SESSION_LIFETIME']=timedelta(days=30)
+DB_PATH=os.getenv('DATABASE_PATH') or os.path.join(os.getenv('DATA_DIR','.'),'resell_pick.db')
 ALLOWED={'image/jpeg','image/png','image/webp'}
+
+def _db():
+    folder=os.path.dirname(os.path.abspath(DB_PATH))
+    os.makedirs(folder,exist_ok=True)
+    con=sqlite3.connect(DB_PATH,timeout=15)
+    con.row_factory=sqlite3.Row
+    return con
+
+def _init_db():
+    with _db() as con:
+        con.executescript("""
+        CREATE TABLE IF NOT EXISTS users(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL DEFAULT '',
+          plan TEXT NOT NULL DEFAULT 'free',
+          created_at TEXT NOT NULL,
+          last_login_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS user_snapshots(
+          user_id INTEGER PRIMARY KEY,
+          payload TEXT NOT NULL DEFAULT '{}',
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """)
+_init_db()
+
+def _current_user():
+    uid=session.get('user_id')
+    if not uid:return None
+    with _db() as con:return con.execute('SELECT id,email,display_name,plan,created_at,last_login_at FROM users WHERE id=?',(uid,)).fetchone()
+
+def _user_json(row):
+    return None if not row else {k:row[k] for k in row.keys()}
+
+@app.get('/api/account/me')
+def account_me():
+    return jsonify(authenticated=bool(_current_user()),user=_user_json(_current_user()))
+
+@app.post('/api/account/register')
+def account_register():
+    data=request.get_json(silent=True) or {}
+    email=str(data.get('email') or '').strip().lower()
+    password=str(data.get('password') or '')
+    name=str(data.get('display_name') or '').strip()[:60]
+    if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email):return jsonify(error='이메일 형식을 확인해 주세요.'),400
+    if len(password)<8:return jsonify(error='비밀번호는 8자 이상으로 입력해 주세요.'),400
+    now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
+    try:
+        with _db() as con:
+            cur=con.execute('INSERT INTO users(email,password_hash,display_name,plan,created_at,last_login_at) VALUES(?,?,?,?,?,?)',(email,generate_password_hash(password),name,'free',now,now))
+            uid=cur.lastrowid
+        session.clear();session.permanent=True;session['user_id']=uid
+        return jsonify(ok=True,user=_user_json(_current_user()))
+    except sqlite3.IntegrityError:return jsonify(error='이미 가입된 이메일입니다.'),409
+
+@app.post('/api/account/login')
+def account_login():
+    data=request.get_json(silent=True) or {}
+    email=str(data.get('email') or '').strip().lower();password=str(data.get('password') or '')
+    with _db() as con:row=con.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
+    if not row or not check_password_hash(row['password_hash'],password):return jsonify(error='이메일 또는 비밀번호가 맞지 않습니다.'),401
+    now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
+    with _db() as con:con.execute('UPDATE users SET last_login_at=? WHERE id=?',(now,row['id']))
+    session.clear();session.permanent=True;session['user_id']=row['id']
+    return jsonify(ok=True,user=_user_json(_current_user()))
+
+@app.post('/api/account/logout')
+def account_logout():
+    session.clear();return jsonify(ok=True)
+
+@app.get('/api/cloud/snapshot')
+def cloud_snapshot_get():
+    user=_current_user()
+    if not user:return jsonify(error='로그인이 필요합니다.'),401
+    with _db() as con:row=con.execute('SELECT payload,updated_at FROM user_snapshots WHERE user_id=?',(user['id'],)).fetchone()
+    if not row:return jsonify(payload=None,updated_at=None)
+    try:payload=json.loads(row['payload'])
+    except Exception:payload={}
+    return jsonify(payload=payload,updated_at=row['updated_at'])
+
+@app.put('/api/cloud/snapshot')
+def cloud_snapshot_put():
+    user=_current_user()
+    if not user:return jsonify(error='로그인이 필요합니다.'),401
+    data=request.get_json(silent=True) or {};payload=data.get('payload')
+    if not isinstance(payload,dict):return jsonify(error='저장할 데이터 형식이 올바르지 않습니다.'),400
+    raw=json.dumps(payload,ensure_ascii=False,separators=(',',':'))
+    if len(raw.encode('utf-8'))>8*1024*1024:return jsonify(error='클라우드 저장 데이터가 8MB를 초과했습니다.'),413
+    now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
+    with _db() as con:con.execute('INSERT INTO user_snapshots(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,now))
+    return jsonify(ok=True,updated_at=now)
+
 def cli():
     k=os.getenv('OPENAI_API_KEY')
     if not k: raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')

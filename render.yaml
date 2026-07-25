@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: margin-calculator
+    name: resell-pick
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -10,3 +10,8 @@ services:
         value: 3.11.9
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /tmp/resell_pick.db
