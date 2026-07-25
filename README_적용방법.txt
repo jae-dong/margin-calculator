@@ -1,4 +1,4 @@
-리셀 PICK WEB v6.3.0 적용 방법
+리셀 PICK WEB v6.3.1 적용 방법
 
 [핵심 업데이트]
 - 관리자 권한을 DB role로 분리하고 ADMIN_EMAILS 계정만 서버 시작 시 관리자 승격
@@ -11,9 +11,9 @@
 
 [업데이트]
 1. ZIP 압축 해제
-2. RESALE_PICK_v6.3.0 폴더 안의 파일 전체를 기존 margin-calculator 프로젝트 폴더에 덮어쓰기
+2. RESALE_PICK_v6.3.1 폴더 안의 파일 전체를 기존 margin-calculator 프로젝트 폴더에 덮어쓰기
 3. GitHub Desktop에서 margin-calculator 저장소 선택
-4. Summary: 리셀 PICK v6.3.0 관리자 대시보드 및 회원관리
+4. Summary: 리셀 PICK v6.3.1 관리자 대시보드 및 회원관리
 5. Commit to main → Push origin
 6. Render 자동 배포 완료 확인
 7. 관리자 계정으로 로그인 후 설정 → 운영자 관리에서 회원 조회 테스트
@@ -24,3 +24,9 @@ DATABASE_URL, SECRET_KEY, ADMIN_EMAILS, OPENAI_API_KEY 등 기존 값은 그대�
 [주의]
 - 관리자 계정은 회원가입 화면에서 지정할 수 없습니다. Render의 ADMIN_EMAILS에 등록된 이메일만 DB role=admin으로 동기화됩니다.
 - 실제 결제 자동 연동 전에는 관리자가 이용권을 수동으로 부여하는 베타 운영 방식입니다.
+
+
+긴급 수정 사항
+- 관리자 회원목록/작업기록에서 escapeHtml 함수 누락으로 발생하던 오류 수정
+- 관리자 화면 HTML 출력 시 특수문자 안전 처리 유지
+- 버전 및 서비스워커 캐시 v6.3.1로 갱신
