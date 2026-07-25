@@ -251,26 +251,26 @@ def general_universal():
 
 추가 지시: 입력 사진은 상품 본체, 포장 앞면/뒷면, 매장 가격표, 바코드, 신발 박스 라벨 중 하나 또는 여러 장이다. 사진 종류를 자동 분류하고 여러 장이면 같은 상품의 정보로 합쳐라. 가격표가 있으면 이미 할인 적용된 실제 표시 결제가격을 price에 넣어라. 서로 충돌하는 값은 임의로 확정하지 말고 warnings에 적어라. 신발은 내부 관리번호가 아니라 실제 브랜드 스타일코드를 product_code로 선택한다.
 """
-        d,e=vision(prompt,800,multiple=multiple)
+        d,e=vision(prompt,560,multiple=multiple)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'일반상품 통합 인식 오류: {x}'),502
 
 @app.post('/api/recognize-product')
 def product():
     try:
-        d,e=vision(GENERAL_PRODUCT_PROMPT,700)
+        d,e=vision(GENERAL_PRODUCT_PROMPT,520)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'상품 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-price-tag')
 def price():
     try:
-        d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',700)
+        d,e=vision(GENERAL_PRODUCT_PROMPT + '\n이 사진은 가격표일 가능성이 높다. 실제 결제할 표시가격과 연결된 상품명·모델번호·바코드를 특히 정확히 읽는다.',520)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(normalize_general_result(d))
     except Exception as x:return jsonify(error=f'가격표 정밀 인식 오류: {x}'),502
 @app.post('/api/recognize-receipt')
 def receipt():
     try:
-        d,e=vision('한국 마트 영수증을 분석한다. 실제로 확인되는 내용만 사용한다. JSON 하나만 반환: {"store":"","date":"","total":0,"items":[{"name":"","qty":1,"amount":0}],"confidence":"높음|보통|낮음"}',550)
+        d,e=vision('한국 마트 영수증을 분석한다. 실제로 확인되는 내용만 사용한다. JSON 하나만 반환: {"store":"","date":"","total":0,"items":[{"name":"","qty":1,"amount":0}],"confidence":"높음|보통|낮음"}',420)
         return (jsonify(error=e[0]),e[1]) if e else jsonify(d)
     except Exception as x:return jsonify(error=f'영수증 인식 오류: {x}'),502
 @app.post('/api/recognize-sneaker-label')

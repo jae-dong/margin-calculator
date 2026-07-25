@@ -130,7 +130,7 @@ button:hover{filter:brightness(1.02)}
  .store-cart-row{grid-template-columns:1fr 112px;gap:9px}.store-cart-button{height:50px;padding:0 10px}
 }
 .brand-lockup{display:flex;align-items:center;gap:14px}.brand-logo{width:58px;height:58px;border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.22)}.hero h1 span{background:linear-gradient(135deg,#33c7ff,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-head h2{margin:0}.compact{width:auto!important;padding:9px 13px;font-size:13px}.record .danger{margin-top:9px}.cart-delete{margin-top:8px}</style></head><body><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 소싱 · KREAM·POIZON 리셀 · 마진 분석 · API 절약 모드</p></div></div><span class="ver">v5.5.1</span></header>
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 소싱 · KREAM·POIZON 리셀 · 마진 분석 · 초절약 모드</p></div></div><span class="ver">v5.5.2</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main class="page active" id="p-sourcing"><div class="modes"><button class="mode active" id="mb-g" onclick="mode('g')">일반상품 소싱</button><button class="mode" id="mb-s" onclick="mode('s')">KREAM·POIZON 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section class="modepage active" id="m-g">
@@ -315,6 +315,15 @@ async function optimizeImage(file,maxSide=1800,quality=.84){
 }
 // API 절약 캐시: 같은 사진/같은 분석 조건은 다시 AI를 호출하지 않고 기기 저장 결과를 재사용합니다.
 const API_CACHE_KEY='resellPickApiCacheV1',API_CACHE_MAX=300,IMAGE_CACHE_DAYS=90,KEYWORD_CACHE_DAYS=30;
+// 상품 결과 캐시: 같은 바코드·모델번호는 다른 각도로 다시 찍어도 AI 호출 없이 재사용합니다.
+const PRODUCT_CACHE_KEY='resellPickProductCacheV1',PRODUCT_CACHE_MAX=1500,PRODUCT_CACHE_DAYS=365;
+function loadProductCache(){try{return JSON.parse(localStorage.getItem(PRODUCT_CACHE_KEY)||'{}')}catch{return {}}}
+function saveProductCache(c){try{const rows=Object.entries(c).sort((a,b)=>(b[1]?.savedAt||0)-(a[1]?.savedAt||0)).slice(0,PRODUCT_CACHE_MAX);localStorage.setItem(PRODUCT_CACHE_KEY,JSON.stringify(Object.fromEntries(rows)))}catch(e){}}
+function productKeys(d={}){const clean=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' '),keys=[];const barcode=String(d.barcode||'').replace(/\D/g,'');if(barcode.length>=8)keys.push('b:'+barcode);const code=clean(d.product_code||d.model_no);if(code)keys.push('m:'+code);const q=clean([d.brand,d.product_name,d.variant,d.volume].filter(Boolean).join(' '));if(q.length>=5)keys.push('q:'+q);return [...new Set(keys)]}
+function cacheProductResult(d){if(!d)return;const keys=productKeys(d);if(!keys.length)return;const c=loadProductCache();keys.forEach(k=>c[k]={savedAt:Date.now(),data:d});saveProductCache(c)}
+function getCachedProductByKeys(keys=[]){const c=loadProductCache(),now=Date.now();for(const k of keys){const row=c[k];if(!row)continue;if(now-(row.savedAt||0)>PRODUCT_CACHE_DAYS*86400000){delete c[k];continue}saveProductCache(c);return row.data||null}saveProductCache(c);return null}
+async function detectLocalBarcode(file){if(!file||!('BarcodeDetector' in window))return '';try{const formats=await BarcodeDetector.getSupportedFormats();const detector=new BarcodeDetector({formats:formats.filter(x=>['ean_13','ean_8','upc_a','upc_e','code_128','itf'].includes(x))});const bmp=await createImageBitmap(file);const rows=await detector.detect(bmp);bmp.close?.();for(const r of rows){const v=String(r.rawValue||'').replace(/\D/g,'');if(v.length>=8&&v.length<=14)return v}}catch(e){}return ''}
+
 const apiInflight=new Map();
 function loadApiCache(){try{return JSON.parse(localStorage.getItem(API_CACHE_KEY)||'{}')}catch{return {}}}
 function saveApiCache(cache){try{const rows=Object.entries(cache).sort((a,b)=>(b[1]?.savedAt||0)-(a[1]?.savedAt||0)).slice(0,API_CACHE_MAX);localStorage.setItem(API_CACHE_KEY,JSON.stringify(Object.fromEntries(rows)))}catch(e){}}
@@ -413,13 +422,18 @@ async function recognizeGeneralUniversal(e){
  const photo=await makeRecordThumb(files[0]);const w=prepareSearchWindow(auto),started=Date.now();
  setAnalysisStatus('gStatus','working',`사진 ${files.length}장 분석중… 상품정보를 먼저 인식합니다.`);
  try{
-  const d=files.length>1?await postImgs(files,'/api/recognize-general-universal'):await postImg(files[0],'/api/recognize-general-universal');
+  let d=null,localBarcode='';
+  // 휴대폰 브라우저가 바코드를 직접 읽을 수 있으면 먼저 무료로 확인합니다.
+  // 이미 분석한 바코드라면 사진 각도가 달라도 OpenAI API를 호출하지 않습니다.
+  if(files.length===1){localBarcode=await detectLocalBarcode(files[0]);if(localBarcode)d=getCachedProductByKeys(['b:'+localBarcode])}
+  if(d){d={...d,barcode:d.barcode||localBarcode,_productCacheHit:true};setAnalysisStatus('gStatus','working','저장된 상품정보를 불러오는 중… AI 호출 없이 처리합니다.')}else d=files.length>1?await postImgs(files,'/api/recognize-general-universal'):await postImg(files[0],'/api/recognize-general-universal');
+  cacheProductResult(d);
   const q=applyGeneralScan(d,Number(d.price||0)>0);
   let saved=null;try{saved=autoSaveG(files.length>1?'사진첩 다중분석':'사진촬영/선택',photo)}catch(saveErr){console.warn('자동저장 실패',saveErr)}
   if(saved?.id)analyzeMarketKeyword(true,saved.id).catch(err=>console.warn('키워드 분석 실패',err));else analyzeMarketKeyword(true).catch(err=>console.warn('키워드 분석 실패',err));
   let opened=false,shop='';try{if(auto==='naver'){opened=openNaverSearch(q,w);shop='네이버쇼핑'}else if(auto==='coupang'){opened=openCoupangSearch(q,w);shop='쿠팡'}else if(w&&!w.closed)w.close()}catch(openErr){console.warn('자동 연결 실패',openErr)}
   const summary=d.product_name||d.product_code||d.barcode||'상품정보 확인 완료';
-  setAnalysisStatus('gStatus','success',`상품정보 인식완료 (${((Date.now()-started)/1000).toFixed(1)}초) · ${summary}${d.price?' · '+won(d.price):''}${saved?' · 기록 자동저장':''}${opened?' · '+shop+'으로 이동':''}`);
+  setAnalysisStatus('gStatus','success',`상품정보 인식완료 (${((Date.now()-started)/1000).toFixed(1)}초) · ${summary}${d.price?' · '+won(d.price):''}${saved?' · 기록 자동저장':''}${d._productCacheHit?' · 저장정보 재사용(API 0회)':''}${d._cacheHit?' · 동일사진 재사용(API 0회)':''}${opened?' · '+shop+'으로 이동':''}`);
  }catch(x){if(w&&!w.closed)try{w.close()}catch{};setAnalysisStatus('gStatus','failure','상품정보 인식 실패 · '+(x.message||'다시 시도하세요.'))}
  finally{input.value=''}
 }
