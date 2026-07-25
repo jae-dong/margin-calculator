@@ -1,3 +1,8 @@
+databases:
+  - name: resell-pick-db
+    plan: free
+    databaseName: resell_pick
+    user: resell_pick
 services:
   - type: web
     name: resell-pick
@@ -5,20 +10,22 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --workers 2 --threads 4 --worker-class gthread --timeout 180 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100
-    disk:
-      name: resell-pick-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
-
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_PATH
-        value: /var/data/resell_pick.db
-
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resell-pick-db
+          property: connectionString
+      - key: COOKIE_SECURE
+        value: "1"
       - key: MAX_CONCURRENT_AI
-        value: 4
+        value: "4"
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
