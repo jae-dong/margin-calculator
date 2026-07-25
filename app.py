@@ -12,12 +12,18 @@ app.config['SECRET_KEY']=os.getenv('SECRET_KEY') or 'CHANGE-ME-RESELL-PICK-BETA'
 app.config['PERMANENT_SESSION_LIFETIME']=timedelta(days=30)
 DB_PATH=os.getenv('DATABASE_PATH') or os.path.join(os.getenv('DATA_DIR','.'),'resell_pick.db')
 ALLOWED={'image/jpeg','image/png','image/webp'}
+_DB_WRITE_LOCK=threading.RLock()
+_AI_SEMAPHORE=threading.BoundedSemaphore(max(1,int(os.getenv('MAX_CONCURRENT_AI','4'))))
 
 def _db():
     folder=os.path.dirname(os.path.abspath(DB_PATH))
     os.makedirs(folder,exist_ok=True)
-    con=sqlite3.connect(DB_PATH,timeout=15)
+    con=sqlite3.connect(DB_PATH,timeout=30,check_same_thread=False,isolation_level=None)
     con.row_factory=sqlite3.Row
+    con.execute('PRAGMA foreign_keys=ON')
+    con.execute('PRAGMA busy_timeout=30000')
+    con.execute('PRAGMA journal_mode=WAL')
+    con.execute('PRAGMA synchronous=NORMAL')
     return con
 
 def _init_db():
@@ -63,7 +69,7 @@ def account_register():
     if len(password)<8:return jsonify(error='비밀번호는 8자 이상으로 입력해 주세요.'),400
     now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
     try:
-        with _db() as con:
+        with _DB_WRITE_LOCK, _db() as con:
             cur=con.execute('INSERT INTO users(email,password_hash,display_name,plan,created_at,last_login_at) VALUES(?,?,?,?,?,?)',(email,generate_password_hash(password),name,'free',now,now))
             uid=cur.lastrowid
         session.clear();session.permanent=True;session['user_id']=uid
@@ -77,7 +83,7 @@ def account_login():
     with _db() as con:row=con.execute('SELECT * FROM users WHERE email=?',(email,)).fetchone()
     if not row or not check_password_hash(row['password_hash'],password):return jsonify(error='이메일 또는 비밀번호가 맞지 않습니다.'),401
     now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
-    with _db() as con:con.execute('UPDATE users SET last_login_at=? WHERE id=?',(now,row['id']))
+    with _DB_WRITE_LOCK, _db() as con:con.execute('UPDATE users SET last_login_at=? WHERE id=?',(now,row['id']))
     session.clear();session.permanent=True;session['user_id']=row['id']
     return jsonify(ok=True,user=_user_json(_current_user()))
 
@@ -104,7 +110,7 @@ def cloud_snapshot_put():
     raw=json.dumps(payload,ensure_ascii=False,separators=(',',':'))
     if len(raw.encode('utf-8'))>8*1024*1024:return jsonify(error='클라우드 저장 데이터가 8MB를 초과했습니다.'),413
     now=datetime.utcnow().isoformat(timespec='seconds')+'Z'
-    with _db() as con:con.execute('INSERT INTO user_snapshots(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,now))
+    with _DB_WRITE_LOCK, _db() as con:con.execute('INSERT INTO user_snapshots(user_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',(user['id'],raw,now))
     return jsonify(ok=True,updated_at=now)
 
 def cli():
@@ -630,7 +636,10 @@ def analyze_market_keyword():
 - 광고문구, 수량 1개, 혼합색상, 무료배송 같은 불필요한 단어를 제거한다.
 - related_keywords에는 검색 의도가 분명한 보조 키워드 2~4개만 넣는다.
 
-2단계: main_keyword로 공개 웹 검색을 수행해 한국 온라인 쇼핑의 수요와 경쟁을 조사한다.
+2단계: main_keyword와 related_keywords를 각각 공개 웹 검색해 한국 온라인 쇼핑의 수요와 경쟁을 교차검증한다.
+- 한 사이트의 결과만으로 결론 내리지 말고 가능하면 서로 다른 공개 출처 3곳 이상을 비교한다.
+- 동일 상품의 중복 페이지, 품절 페이지, 광고성 문서는 경쟁 상품수에서 과대계상하지 않는다.
+- 확인 시점이 오래된 자료는 낮은 가중치를 적용한다.
 우선 확인할 공개 근거:
 - 네이버 검색/쇼핑 결과에 노출된 상품 수 또는 관련 문서
 - 쿠팡·11번가·G마켓 등 공개 검색 결과
@@ -639,25 +648,30 @@ def analyze_market_keyword():
 
 유료 회원 전용 데이터나 로그인 뒤 수치를 우회하지 않는다. 정확한 월간 검색량을 확인하지 못하면 search_volume_type을 "추정"으로 하고, 공개 근거에 따른 보수적 범위를 monthly_search_min/monthly_search_max에 넣는다. 공개 수치도 근거도 부족하면 0으로 둔다.
 판매자 수와 상품 수는 실제 확인한 숫자가 있으면 seller_count/product_count에 넣고, 검색결과 수만 확인되면 product_count에 넣는다.
-competition_score는 상품수·판매자수·브랜드 독점·리뷰 집중도를 반영한 0~100 점수다.
-demand_score는 검색 관심도·노출 빈도·거래/리뷰 신호를 반영한 0~100 점수다.
-sourcing_score는 수요가 높고 경쟁이 낮으며 입력 마진/ROI가 좋을수록 높다.
-evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫자를 사실처럼 만들지 않는다.
+competition_score는 상품수·판매자수·상위 판매자 집중도·가격 덤핑·브랜드 독점·리뷰 집중도를 반영한 0~100 점수다.
+demand_score는 검색 관심도·최근 노출 증가·구매/리뷰 신호·재구매 가능성을 반영한 0~100 점수다.
+sourcing_score는 수요, 경쟁, 예상 마진/ROI, 가격 안정성, 회전 가능성을 함께 반영한다.
+search_trend는 상승|보합|하락|판단어려움 중 하나로 작성하고 trend_reason에 근거를 설명한다.
+review_signal과 purchase_signal은 리뷰 증가·구매표시·거래 흔적 등 실제 확인 가능한 신호를 구분해 설명한다.
+price_competition은 낮음|보통|높음|판단어려움 중 하나로 작성하고 price_range_note에 가격대와 덤핑 여부를 설명한다.
+confidence_reason에는 출처 수, 수치 확인 여부, 자료 최신성을 근거로 신뢰도를 설명한다.
+evidence에는 출처명 또는 확인 페이지 성격을 포함해 3~7개 적는다. 확인하지 않은 숫자를 사실처럼 만들지 않는다.
 
 설명·마크다운 없이 완전한 JSON 하나만 반환한다:
-{{"main_keyword":"","related_keywords":[],"demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","search_volume_type":"확인값|추정|자료부족","monthly_search_volume":0,"monthly_search_min":0,"monthly_search_max":0,"seller_count":0,"product_count":0,"data_scope":"공개 웹 검색 기반","confidence":"높음|보통|낮음","evidence":[""],"cautions":[""]}}"""
+{{"main_keyword":"","related_keywords":[],"demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","search_volume_type":"확인값|추정|자료부족","monthly_search_volume":0,"monthly_search_min":0,"monthly_search_max":0,"seller_count":0,"product_count":0,"search_trend":"상승|보합|하락|판단어려움","trend_reason":"","review_signal":"","purchase_signal":"","price_competition":"낮음|보통|높음|판단어려움","price_range_note":"","data_scope":"공개 웹 검색 교차검증","confidence":"높음|보통|낮음","confidence_reason":"","evidence":[""],"cautions":[""]}}"""
         client=cli()
         response=None
         last_error=None
         for tool_type in ('web_search','web_search_preview'):
             try:
                 model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
-                response=client.responses.create(
-                    model=model,
-                    tools=[{'type':tool_type}],
-                    input=prompt,
-                    max_output_tokens=750
-                )
+                with _AI_SEMAPHORE:
+                    response=client.responses.create(
+                        model=model,
+                        tools=[{'type':tool_type}],
+                        input=prompt,
+                        max_output_tokens=1200
+                    )
                 break
             except Exception as exc:
                 last_error=exc
@@ -678,7 +692,15 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
             if d.get('monthly_search_max',0) else 0
         )
         d['exact_search_volume_available']=d.get('search_volume_type')=='확인값' and bool(d.get('monthly_search_volume'))
-        d['data_scope']=d.get('data_scope') or '공개 웹 검색 기반'
+        d['data_scope']=d.get('data_scope') or '공개 웹 검색 교차검증'
+        d['checked_at']=datetime.now().astimezone().strftime('%Y-%m-%d %H:%M')
+        d['search_trend']=d.get('search_trend') or '판단어려움'
+        d['trend_reason']=str(d.get('trend_reason') or '공개 자료의 시계열 신호가 충분하지 않습니다.')[:240]
+        d['review_signal']=str(d.get('review_signal') or '확인 가능한 리뷰 신호가 제한적입니다.')[:240]
+        d['purchase_signal']=str(d.get('purchase_signal') or '공개 구매 신호를 보수적으로 반영했습니다.')[:240]
+        d['price_competition']=d.get('price_competition') or '판단어려움'
+        d['price_range_note']=str(d.get('price_range_note') or '공개 가격 자료가 충분하지 않아 직접 시세 확인이 필요합니다.')[:240]
+        d['confidence_reason']=str(d.get('confidence_reason') or '공개 자료의 수치 확인 범위에 따라 신뢰도를 산정했습니다.')[:240]
         # 공개 검색에서 절대값을 찾지 못해도 화면 전체가 '자료부족'이 되지 않도록
         # 대표 키워드와 확인 가능한 노출 신호를 바탕으로 보수적인 AI 추정 범위를 제공한다.
         if not d.get('monthly_search_volume') and not d.get('monthly_search_max'):
@@ -718,7 +740,7 @@ evidence에는 확인 근거를 짧게 2~5개 적는다. 확인하지 않은 숫
             'search_volume_type':'AI 추정','monthly_search_volume':0,
             'monthly_search_min':int(mid*.55),'monthly_search_max':int(mid*1.45),
             'search_volume_estimate':mid,'seller_count':0,'product_count':competition*35,
-            'data_scope':'대표 키워드 기반 AI 추정','confidence':'낮음','exact_search_volume_available':False,
+            'data_scope':'대표 키워드 기반 보수적 추정','confidence':'낮음','confidence_reason':'공개 검색 연결 실패로 교차검증하지 못했습니다.','checked_at':datetime.now().astimezone().strftime('%Y-%m-%d %H:%M'),'search_trend':'판단어려움','trend_reason':'시계열 자료를 확인하지 못했습니다.','review_signal':'공개 리뷰 신호를 확인하지 못했습니다.','purchase_signal':'공개 구매 신호를 확인하지 못했습니다.','price_competition':'판단어려움','price_range_note':'가격 경쟁 자료를 직접 확인해 주세요.','exact_search_volume_available':False,
             'evidence':['사진에서 인식한 대표 키워드의 구체성과 상품 카테고리를 반영했습니다.'],
             'cautions':['공개 검색 연결이 일시 실패해 공식 절대 검색량이 아닌 추정 범위를 표시합니다.','키워드 시장 분석 오류: '+str(x)[:120]]
         })

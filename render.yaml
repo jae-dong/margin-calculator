@@ -4,7 +4,11 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120
+    startCommand: gunicorn app:app --workers 2 --threads 4 --worker-class gthread --timeout 180 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100
+    disk:
+      name: resell-pick-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -14,4 +18,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
-        value: /tmp/resell_pick.db
+        value: /var/data/resell_pick.db
+
+      - key: MAX_CONCURRENT_AI
+        value: 4
