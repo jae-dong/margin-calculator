@@ -1,4 +1,4 @@
-리셀 PICK WEB v6.5.0 적용 방법
+리셀 PICK WEB v6.6.0 적용 방법
 
 [핵심 업데이트]
 - v6.4.0 숫자 회원번호·회원 CSV·로그인 잠금 기능 전체 포함
@@ -11,9 +11,9 @@
 
 [적용 순서]
 1. 압축파일을 별도 폴더에 압축 해제
-2. RESALE_PICK_v6.5.0 폴더 안의 파일 전체를 기존 margin-calculator 프로젝트 폴더에 덮어쓰기
+2. RESALE_PICK_v6.6.0 폴더 안의 파일 전체를 기존 margin-calculator 프로젝트 폴더에 덮어쓰기
 3. GitHub Desktop에서 margin-calculator 저장소 선택
-4. Summary: 리셀 PICK v6.5.0 공지·계정보안·데이터내려받기
+4. Summary: 리셀 PICK v6.6.0 공지·계정보안·데이터내려받기
 5. Commit to main
 6. Push origin
 7. Render 배포가 Live가 될 때까지 기다리기
@@ -25,3 +25,11 @@
 - DATABASE_URL, SECRET_KEY, ADMIN_EMAILS 등 기존 Render 환경변수는 그대로 유지하세요.
 - 내 데이터 내려받기 파일에는 계정 이메일과 상품 기록이 포함될 수 있으므로 안전한 기기에 보관하세요.
 - 공지에는 비밀번호, API 키, 개인정보 등 민감정보를 입력하지 마세요.
+
+
+[v6.6.0 추가]
+- 회원가입 필수 약관 동의
+- 약관/개인정보 처리방침 버전별 동의 이력 저장
+- 회원 설정 화면 동의 상태 표시
+- TERMS_VERSION, PRIVACY_VERSION 환경변수로 문서 버전 관리
+- 기존 회원의 최신 약관 재동의 API 기반 마련
