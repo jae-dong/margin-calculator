@@ -139,8 +139,22 @@ button:hover{filter:brightness(1.02)}
 .market-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.market-detail-grid .record{margin:0;padding:12px}.market-detail-grid b{font-size:13px}.market-detail-grid .meta{margin-top:6px;line-height:1.45}@media(max-width:520px){.market-detail-grid{grid-template-columns:1fr}}
 
 .admin-console{display:none}.admin-console.show{display:block}.admin-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.admin-member-list{display:grid;gap:10px;margin-top:12px}.admin-member{border:1px solid #e3e8f1;border-radius:16px;padding:14px;background:#fff}.admin-member-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-member-email{font-weight:900;word-break:break-all}.admin-member-meta{font-size:12px;color:#6b768d;line-height:1.55;margin-top:4px}.admin-member-actions{display:grid;grid-template-columns:1fr 90px 110px;gap:8px;margin-top:10px}.admin-badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eef3ff;color:#234e9a;font-size:11px;font-weight:900}.admin-badge.stop{background:#fff0f0;color:#b42318}.admin-empty{padding:20px;text-align:center;color:#75819a}.admin-log{padding:9px 0;border-bottom:1px solid #edf0f5;font-size:12px;color:#536079}.notice-banner{display:none;margin:12px 0;padding:14px;border-radius:16px;background:#fff8e6;border:1px solid #f3d788}.notice-banner.show{display:block}.notice-title{font-weight:900;margin-bottom:5px}.notice-body{white-space:pre-wrap;line-height:1.55;color:#505b70}.admin-notice-list{display:grid;gap:8px;margin-top:12px}.admin-notice-item{padding:12px;border:1px solid #e3e8f1;border-radius:14px;background:#fff}.admin-notice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}@media(max-width:620px){.admin-summary-grid{grid-template-columns:1fr 1fr}.admin-member-actions{grid-template-columns:1fr 84px}.admin-member-actions button{grid-column:1/-1}}
+
+/* v6.7.0: 하단 고정 메뉴와 본문 겹침 방지 */
+:root{--bottom-nav-space:84px}
+html{scroll-padding-bottom:calc(var(--bottom-nav-space) + 28px + env(safe-area-inset-bottom))}
+body{padding-bottom:calc(var(--bottom-nav-space) + 36px + env(safe-area-inset-bottom))!important}
+body::after{content:"";display:block;height:1px}
+.app{padding-bottom:calc(var(--bottom-nav-space) + 32px + env(safe-area-inset-bottom))!important}
+.page.active{padding-bottom:8px}
+.page.active>.card:last-child,.modepage.active>.card:last-child{margin-bottom:24px}
+.sticky{isolation:isolate}
+@media(max-width:520px){
+ .app{padding-bottom:calc(var(--bottom-nav-space) + 36px + env(safe-area-inset-bottom))!important}
+ .page.active>.card:last-child,.modepage.active>.card:last-child{margin-bottom:28px}
+}
 </style></head><body><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.6.0</span></header>
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.7.0</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main class="page active" id="p-sourcing"><div class="modes"><button class="mode active" id="mb-g" onclick="mode('g')">일반상품 소싱</button><button class="mode" id="mb-s" onclick="mode('s')">KREAM·POIZON 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section class="modepage active" id="m-g">
@@ -1195,6 +1209,31 @@ function exportAdminMembers(){
 async function adminApplyPlan(id){const plan=$('ap_'+id).value,days=Number($('ad_'+id).value||0);if(plan!=='free'&&days<1){alert('유료 이용권은 이용일수를 1일 이상 입력해 주세요.');return}if(!confirm('선택한 이용권을 적용하시겠습니까?'))return;try{await accountRequest('/api/admin/users/'+id+'/plan',{method:'POST',body:JSON.stringify({plan,days})});await loadAdminDashboard()}catch(e){alert(e.message||'적용 실패')}}
 async function adminToggleStatus(id,status){if(!confirm(status==='suspended'?'이 회원의 이용을 중지하시겠습니까?':'이 회원의 이용을 다시 허용하시겠습니까?'))return;try{await accountRequest('/api/admin/users/'+id+'/status',{method:'POST',body:JSON.stringify({status})});await loadAdminDashboard()}catch(e){alert(e.message||'변경 실패')}}
 async function loadAdminAudit(){try{const d=await accountRequest('/api/admin/audit-logs');const box=$('adminAuditList');box.innerHTML=(d.logs||[]).map(x=>`<div class="admin-log"><b>${escapeHtml(x.action||'')}</b> · 회원 #${x.target_user_id||'-'}<br>${escapeHtml(String(x.created_at||''))}</div>`).join('')||'<div class="admin-empty">작업 기록이 없습니다.</div>'}catch(e){}}
+
+
+
+// v6.7.0: 실제 하단 메뉴 높이를 측정해 콘텐츠 안전 여백을 자동 보정
+function syncBottomNavSpace(){
+  const nav=document.querySelector('.sticky');
+  if(!nav)return;
+  const height=Math.max(72,Math.ceil(nav.getBoundingClientRect().height));
+  document.documentElement.style.setProperty('--bottom-nav-space',height+'px');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  syncBottomNavSpace();
+  const nav=document.querySelector('.sticky');
+  if(nav&&window.ResizeObserver){
+    const observer=new ResizeObserver(syncBottomNavSpace);
+    observer.observe(nav);
+  }
+  requestAnimationFrame(syncBottomNavSpace);
+  setTimeout(syncBottomNavSpace,250);
+});
+window.addEventListener('resize',syncBottomNavSpace,{passive:true});
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',syncBottomNavSpace,{passive:true});
+  window.visualViewport.addEventListener('scroll',syncBottomNavSpace,{passive:true});
+}
 
 
 loadServiceNotices();
