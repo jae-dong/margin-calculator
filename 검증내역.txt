@@ -1,12 +1,14 @@
-리셀 PICK v6.11.1 검증 내역
+리셀 PICK v6.11.2 검증 내역
 
-- Python 문법 검사
-- JavaScript 문법 검사
-- 모든 서버/화면 버전 6.11.1 일치 확인
-- 서비스워커 캐시명 및 start_url 버전 갱신 확인
-- 모든 로그인에서 Flask 영구 세션 1시간 적용 확인
-- 인증 쿠키 Max-Age 3600초 적용 확인
-- 서버 auth_sessions 유휴 만료 3600초 유지 확인
-- 앱 시작 로그인 확인 단일 실행 및 401 자동 재시도 확인
-- 로그인 후 메인 소싱 화면 이동 코드 유지 확인
-- ZIP 무결성 검사
+- app.py Python 문법 검사 통과
+- index.html 인라인 JavaScript Node.js 문법 검사 통과
+- HTML 중복 id 검사 통과
+- 서버·화면·서비스워커·manifest·version.json 버전 6.11.2 일치 확인
+- /api/account/restore 공개 인증 복원 경로 존재 확인
+- 로그인·회원가입·내 계정 응답에 1시간 복원키 포함 확인
+- localStorage + IndexedDB 이중 인증 저장 코드 확인
+- 첫 401에서 복원 API를 우선 실행하고 확정 만료 시에만 삭제하는 흐름 확인
+- 루트·index·서비스워커·version 응답 캐시 금지 헤더 확인
+- ZIP 내부 파일 경로와 압축 상태 검사
+
+※ Render 실제 PostgreSQL과 모바일 브라우저의 종료·재실행 동작은 배포 후 실기기에서 최종 확인해야 합니다.
