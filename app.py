@@ -8,6 +8,7 @@ import xlsxwriter
 from openai import OpenAI
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 app=Flask(__name__,static_folder='.')
 # Render·Cloudflare 같은 역방향 프록시 뒤에서도 실제 HTTPS/호스트를 인식해
 # 로그인 POST와 보안 세션 쿠키가 정상 동작하도록 합니다.
@@ -16,8 +17,10 @@ app.config['MAX_CONTENT_LENGTH']=24*1024*1024
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY') or 'CHANGE-ME-RESELL-PICK-BETA'
 app.config['PERMANENT_SESSION_LIFETIME']=timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY']=True
-app.config['SESSION_COOKIE_SAMESITE']='Lax'
+app.config['SESSION_COOKIE_SAMESITE']=os.getenv('COOKIE_SAMESITE','None')
 app.config['SESSION_COOKIE_SECURE']=os.getenv('COOKIE_SECURE','1')=='1'
+# 설치형 앱·인앱 브라우저에서 쿠키가 차단되는 경우를 줄입니다.
+app.config['SESSION_COOKIE_PARTITIONED']=os.getenv('COOKIE_PARTITIONED','1')=='1'
 app.config['SESSION_COOKIE_NAME']='resell_pick_session'
 app.config['JSON_AS_ASCII']=False
 
@@ -269,16 +272,38 @@ _init_db_with_retry()
 
 def _row_dict(row): return dict(row._mapping) if row else None
 
+AUTH_TOKEN_MAX_AGE=30*24*60*60
+
+def _auth_serializer():
+    return URLSafeTimedSerializer(app.config['SECRET_KEY'],salt='resell-pick-auth-v1')
+
+def _issue_auth_token(uid,auth_version):
+    return _auth_serializer().dumps({'uid':int(uid),'av':int(auth_version or 1)})
+
+def _bearer_auth():
+    raw=str(request.headers.get('Authorization') or '').strip()
+    if not raw.lower().startswith('bearer '):return None,None
+    token=raw[7:].strip()
+    if not token:return None,None
+    try:
+        payload=_auth_serializer().loads(token,max_age=AUTH_TOKEN_MAX_AGE)
+        return int(payload.get('uid')),int(payload.get('av') or 1)
+    except (BadSignature,SignatureExpired,TypeError,ValueError):
+        return None,None
+
 def _current_user():
-    uid=session.get('user_id')
+    uid=session.get('user_id');expected_auth=session.get('auth_version');via_cookie=bool(uid)
+    if not uid:
+        uid,expected_auth=_bearer_auth();via_cookie=False
     if not uid:return None
     with ENGINE.connect() as con:
         row=_row_dict(con.execute(text('SELECT id,member_number,email,display_name,plan,created_at,last_login_at,email_verified,auth_version,plan_started_at,plan_expires_at,role,account_status FROM users WHERE id=:id'),{'id':uid}).first())
     if row:
         current_auth=int(row.get('auth_version') or 1)
-        if session.get('auth_version') is None:session['auth_version']=current_auth
-        elif int(session.get('auth_version'))!=current_auth:
-            session.clear();return None
+        if expected_auth is None and via_cookie:session['auth_version']=current_auth
+        elif expected_auth is not None and int(expected_auth)!=current_auth:
+            if via_cookie:session.clear()
+            return None
         row['is_admin']=row.get('role')=='admin';row['email_verified']=bool(row.get('email_verified'))
         if row.get('account_status')!='active':
             session.clear();return None
@@ -382,7 +407,7 @@ def account_register():
                 with ENGINE.begin() as con: con.execute(text('DELETE FROM users WHERE id=:i'),{'i':uid})
                 return jsonify(error='인증메일 발송 설정이 완료되지 않아 가입을 진행할 수 없습니다. 관리자에게 문의해 주세요.'),503
         session.clear();session.permanent=True;session['user_id']=uid;session['auth_version']=1
-        return jsonify(ok=True,user=_current_user(),verification_required=bool(code))
+        user=_current_user();return jsonify(ok=True,user=user,auth_token=_issue_auth_token(uid,1),verification_required=bool(code))
     except IntegrityError:return jsonify(error='이미 가입된 이메일입니다. Gmail의 점(.) 또는 +별칭을 바꾼 주소도 같은 계정으로 처리됩니다.'),409
 
 @app.post('/api/account/consents')
@@ -481,7 +506,7 @@ def account_login():
         if not user:
             session.clear()
             return jsonify(error='로그인 세션을 만들지 못했습니다. 앱을 완전히 종료한 뒤 다시 실행해 주세요.',code='session_failed'),500
-        return jsonify(ok=True,user=user,message='관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.')
+        return jsonify(ok=True,user=user,auth_token=_issue_auth_token(row['id'],row.get('auth_version') or 1),message='관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.')
     except Exception:
         logging.exception('login session creation failed user_id=%s',row.get('id'))
         session.clear()
@@ -493,10 +518,10 @@ def account_login_status():
     try:
         with ENGINE.connect() as con:
             con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.1')
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.2')
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.1'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.2'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -570,7 +595,7 @@ def account_logout_all():
         con.execute(text('UPDATE users SET auth_version=auth_version+1 WHERE id=:i'),{'i':u['id']})
         row=con.execute(text('SELECT auth_version FROM users WHERE id=:i'),{'i':u['id']}).first()
     session.clear();session.permanent=True;session['user_id']=u['id'];session['auth_version']=int(row[0])
-    return jsonify(ok=True,message='현재 기기를 제외한 모든 기기에서 로그아웃했습니다.')
+    return jsonify(ok=True,auth_token=_issue_auth_token(u['id'],int(row[0])),message='현재 기기를 제외한 모든 기기에서 로그아웃했습니다.')
 
 @app.get('/api/account/export')
 def account_export():
@@ -600,7 +625,7 @@ def account_change_password():
     with ENGINE.begin() as con:
         con.execute(text('UPDATE users SET password_hash=:p,auth_version=auth_version+1 WHERE id=:i'),{'p':generate_password_hash(new),'i':u['id']})
     session['auth_version']=int(u.get('auth_version') or 1)+1
-    return jsonify(ok=True)
+    return jsonify(ok=True,auth_token=_issue_auth_token(u['id'],session['auth_version']))
 
 @app.delete('/api/account')
 def account_delete():
@@ -1628,10 +1653,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.9.1',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.2',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.9.1',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.2',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
