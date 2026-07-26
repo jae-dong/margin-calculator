@@ -7,7 +7,11 @@ from flask import Flask,jsonify,request,send_from_directory,send_file,session,Re
 import xlsxwriter
 from openai import OpenAI
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 app=Flask(__name__,static_folder='.')
+# Render·Cloudflare 같은 역방향 프록시 뒤에서도 실제 HTTPS/호스트를 인식해
+# 로그인 POST와 보안 세션 쿠키가 정상 동작하도록 합니다.
+app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_proto=1,x_host=1,x_port=1)
 app.config['MAX_CONTENT_LENGTH']=24*1024*1024
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY') or 'CHANGE-ME-RESELL-PICK-BETA'
 app.config['PERMANENT_SESSION_LIFETIME']=timedelta(days=30)
@@ -33,13 +37,23 @@ def _security_headers(response):
 @app.before_request
 def _same_origin_write_guard():
     if request.method not in {'POST','PUT','PATCH','DELETE'}: return None
-    origin=request.headers.get('Origin')
+    origin=(request.headers.get('Origin') or '').strip().rstrip('/')
     if not origin: return None
-    expected=f"{request.scheme}://{request.host}"
-    forwarded=request.headers.get('X-Forwarded-Proto')
-    if forwarded: expected=f"{forwarded.split(',')[0].strip()}://{request.host}"
-    if origin.rstrip('/')!=expected.rstrip('/'):
-        return jsonify(error='허용되지 않은 요청입니다. 화면을 새로고침한 뒤 다시 시도해 주세요.'),403
+    # 프록시·사용자 지정 도메인 환경에서 Host가 달라져 정상 로그인까지 차단되던 문제를 방지합니다.
+    allowed=set()
+    proto=(request.headers.get('X-Forwarded-Proto') or request.scheme or 'https').split(',')[0].strip()
+    hosts=[request.host]
+    forwarded_host=(request.headers.get('X-Forwarded-Host') or '').split(',')[0].strip()
+    if forwarded_host: hosts.append(forwarded_host)
+    for host in hosts:
+        if host:
+            allowed.add(f'{proto}://{host}'.rstrip('/'))
+            allowed.add(f'https://{host}'.rstrip('/'))
+    public_url=(os.getenv('PUBLIC_APP_URL') or os.getenv('RENDER_EXTERNAL_URL') or '').strip().rstrip('/')
+    if public_url: allowed.add(public_url)
+    if origin not in allowed:
+        logging.warning('same-origin guard rejected origin=%s allowed=%s',origin,sorted(allowed))
+        return jsonify(error='로그인 서버 연결을 확인하지 못했습니다. 앱을 완전히 종료한 뒤 다시 실행해 주세요.',code='origin_mismatch'),403
 DATABASE_URL=os.getenv('DATABASE_URL') or ''
 DB_PATH=os.getenv('DATABASE_PATH') or os.path.join(os.getenv('DATA_DIR','.'),'resell_pick.db')
 ALLOWED={'image/jpeg','image/png','image/webp'}
@@ -230,7 +244,12 @@ def _init_db():
         # 첫 관리자 계정은 관리 편의를 위해 100000번을 사용합니다. 다른 관리자는 기존 고유번호를 유지합니다.
         first_admin=con.execute(text("SELECT id FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1")).first()
         if first_admin:
-            con.execute(text('UPDATE users SET member_number=100000 WHERE id=:i'),{'i':int(first_admin[0])})
+            con.execute(text('UPDATE users SET member_number=100000,role=\'admin\',account_status=\'active\',failed_login_count=0,locked_until=NULL WHERE id=:i'),{'i':int(first_admin[0])})
+        # 배포 중 권한/잠금 정보가 꼬여 관리자 계정이 막히지 않도록 관리자만 안전하게 복구합니다.
+        if admin_emails:
+            for ar in admin_rows:
+                if _canonical_email(ar[1]) in admin_emails:
+                    con.execute(text("UPDATE users SET role='admin',account_status='active',failed_login_count=0,locked_until=NULL WHERE id=:i"),{'i':int(ar[0])})
         con.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_key ON users(email_key)'))
         con.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ux_users_member_number ON users(member_number)'))
         con.execute(text('CREATE INDEX IF NOT EXISTS ix_registration_attempts_ip_created ON registration_attempts(ip_hash,created_at)'))
@@ -379,60 +398,105 @@ def account_consents():
             con.execute(text('INSERT INTO user_consents(user_id,consent_type,document_version,accepted_at,ip_hash,user_agent) VALUES(:u,:t,:v,:a,:ip,:ua)'),{'u':u['id'],'t':ctype,'v':version,'a':now,'ip':ip_hash,'ua':ua})
     return jsonify(ok=True,consents=_consent_status(u['id']))
 
+def _normalize_login_identifier(value):
+    raw=str(value or '').strip()
+    # 모바일 키보드가 넣는 전각 숫자·공백·하이픈을 정리합니다.
+    trans=str.maketrans('０１２３４５６７８９','0123456789')
+    raw=raw.translate(trans)
+    compact=re.sub(r'[\s\-]+','',raw)
+    if re.fullmatch(r'\d{6,10}',compact):
+        return compact,True
+    return raw.lower(),False
+
 @app.post('/api/account/login')
 def account_login():
     d=request.get_json(silent=True) or {}
-    identifier=str(d.get('email') or d.get('identifier') or '').strip()
+    identifier,is_member_number=_normalize_login_identifier(d.get('email') or d.get('identifier') or '')
     password=str(d.get('password') or '')
     if not identifier or not password:
         return jsonify(error='이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.',code='missing_credentials'),400
     now_dt=datetime.utcnow();now=now_dt.isoformat(timespec='seconds')+'Z'
-    is_member_number=bool(re.fullmatch(r'\d{6,10}',identifier))
-    with ENGINE.connect() as con:
-        if is_member_number:
-            row=_row_dict(con.execute(text('SELECT * FROM users WHERE member_number=:m'),{'m':int(identifier)}).first())
-        else:
-            canonical=_canonical_email(identifier)
-            # 최신 email_key, 예전 raw email_key, 실제 이메일을 차례로 확인한다.
-            row=_row_dict(con.execute(text('SELECT * FROM users WHERE email_key=:e OR LOWER(email)=:raw ORDER BY id ASC LIMIT 1'),{'e':canonical,'raw':identifier.lower()}).first())
-            # 구버전에서 Gmail 점(.)·+별칭이 raw email_key로 남은 계정도 로그인되도록 최종 비교한다.
-            if not row and '@' in canonical:
-                domain=canonical.rsplit('@',1)[1]
-                candidates=con.execute(text('SELECT * FROM users WHERE LOWER(email) LIKE :d'),{'d':'%@'+domain}).fetchall()
-                row=next((_row_dict(x) for x in candidates if _canonical_email(x._mapping.get('email'))==canonical),None)
-    # ADMIN_EMAILS 또는 예약 관리자 회원번호 100000이면 손실된 관리자 권한을 즉시 복구한다.
-    configured_admin=bool(row and (_canonical_email(row.get('email')) in _admins() or int(row.get('member_number') or 0)==100000))
-    if configured_admin and (row.get('role')!='admin' or row.get('account_status')!='active'):
-        with ENGINE.begin() as con:
-            con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE id=:i"),{'i':row['id']})
-        row['role']='admin';row['account_status']='active'
+    try:
+        with ENGINE.connect() as con:
+            if is_member_number:
+                row=_row_dict(con.execute(text('SELECT * FROM users WHERE member_number=:m'),{'m':int(identifier)}).first())
+            else:
+                canonical=_canonical_email(identifier)
+                row=_row_dict(con.execute(text('SELECT * FROM users WHERE email_key=:e OR LOWER(email)=:raw ORDER BY id ASC LIMIT 1'),{'e':canonical,'raw':identifier.lower()}).first())
+                if not row and '@' in canonical:
+                    domain=canonical.rsplit('@',1)[1]
+                    candidates=con.execute(text('SELECT * FROM users WHERE LOWER(email) LIKE :d'),{'d':'%@'+domain}).fetchall()
+                    row=next((_row_dict(x) for x in candidates if _canonical_email(x._mapping.get('email'))==canonical),None)
+    except Exception:
+        logging.exception('login database lookup failed')
+        return jsonify(error='로그인 서버가 데이터베이스에 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.',code='database_unavailable'),503
+
+    configured_admin=bool(row and (_canonical_email(row.get('email')) in _admins() or int(row.get('member_number') or 0)==100000 or row.get('role')=='admin'))
+    if configured_admin:
+        # 관리자 권한과 계정 상태만 복구합니다. 비밀번호 실패 잠금은 보안을 위해 그대로 적용합니다.
+        try:
+            with ENGINE.begin() as con:
+                con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE id=:i"),{'i':row['id']})
+            row['role']='admin';row['account_status']='active'
+        except Exception:
+            logging.exception('admin account recovery failed')
+
     if row and row.get('locked_until'):
         try:
             locked=datetime.fromisoformat(str(row['locked_until']).replace('Z','+00:00')).replace(tzinfo=None)
             if locked>now_dt:
                 mins=max(1,int((locked-now_dt).total_seconds()//60)+1)
                 return jsonify(error=f'로그인 시도가 여러 번 실패해 계정이 잠시 보호되고 있습니다. 약 {mins}분 후 다시 시도해 주세요.',code='account_locked'),429
-        except Exception: pass
-    if not row or not check_password_hash(row['password_hash'],password):
+        except Exception:
+            pass
+
+    valid_password=False
+    if row:
+        try:
+            valid_password=check_password_hash(str(row.get('password_hash') or ''),password)
+        except Exception:
+            logging.exception('stored password hash check failed user_id=%s',row.get('id'))
+
+    if not row or not valid_password:
         if row:
             fails=int(row.get('failed_login_count') or 0)+1
             lock_until=(now_dt+timedelta(minutes=15)).isoformat(timespec='seconds')+'Z' if fails>=5 else None
             with ENGINE.begin() as con:
                 con.execute(text('UPDATE users SET failed_login_count=:f,locked_until=:l WHERE id=:i'),{'f':0 if lock_until else fails,'l':lock_until,'i':row['id']})
             remaining=max(0,5-fails)
-            msg='이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
+            msg='관리자 비밀번호가 맞지 않습니다.' if configured_admin else '이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
             if lock_until: msg+=' 계정 보호를 위해 15분 동안 로그인이 제한됩니다.'
             elif remaining: msg+=f' {remaining}회 더 실패하면 15분 동안 로그인이 제한됩니다.'
         else:
-            msg='이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
+            msg='가입된 계정을 찾지 못했습니다. 이메일 또는 회원번호를 다시 확인해 주세요.'
         return jsonify(error=msg,code='invalid_credentials'),401
+
     if row.get('account_status')=='suspended':
         return jsonify(error='이 계정은 이용이 중지되었습니다. 고객지원에 문의해 주세요.',code='account_suspended'),403
-    with ENGINE.begin() as con:
-        con.execute(text('UPDATE users SET last_login_at=:n,failed_login_count=0,locked_until=NULL WHERE id=:i'),{'n':now,'i':row['id']})
-    session.clear();session.permanent=True;session['user_id']=row['id'];session['auth_version']=int(row.get('auth_version') or 1)
-    user=_current_user()
-    return jsonify(ok=True,user=user,message='관리자 계정으로 로그인했습니다.' if user and user.get('is_admin') else '로그인했습니다.')
+    try:
+        with ENGINE.begin() as con:
+            con.execute(text('UPDATE users SET last_login_at=:n,failed_login_count=0,locked_until=NULL WHERE id=:i'),{'n':now,'i':row['id']})
+        session.clear();session.permanent=True;session['user_id']=int(row['id']);session['auth_version']=int(row.get('auth_version') or 1)
+        user=_current_user()
+        if not user:
+            session.clear()
+            return jsonify(error='로그인 세션을 만들지 못했습니다. 앱을 완전히 종료한 뒤 다시 실행해 주세요.',code='session_failed'),500
+        return jsonify(ok=True,user=user,message='관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.')
+    except Exception:
+        logging.exception('login session creation failed user_id=%s',row.get('id'))
+        session.clear()
+        return jsonify(error='로그인 처리 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',code='login_server_error'),500
+
+
+@app.get('/api/account/login-status')
+def account_login_status():
+    try:
+        with ENGINE.connect() as con:
+            con.execute(text('SELECT 1')).scalar_one()
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.1')
+    except Exception:
+        logging.exception('login status database failed')
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.1'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1564,10 +1628,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.9.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.1',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.9.0',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.1',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()

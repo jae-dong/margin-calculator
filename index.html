@@ -140,7 +140,7 @@ button:hover{filter:brightness(1.02)}
 
 .admin-console{display:none}.admin-console.show{display:block}.admin-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.admin-member-list{display:grid;gap:10px;margin-top:12px}.admin-member{border:1px solid #e3e8f1;border-radius:16px;padding:14px;background:#fff}.admin-member-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-member-email{font-weight:900;word-break:break-all}.admin-member-meta{font-size:12px;color:#6b768d;line-height:1.55;margin-top:4px}.admin-member-actions{display:grid;grid-template-columns:1fr 90px 110px;gap:8px;margin-top:10px}.admin-badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eef3ff;color:#234e9a;font-size:11px;font-weight:900}.admin-badge.stop{background:#fff0f0;color:#b42318}.admin-empty{padding:20px;text-align:center;color:#75819a}.admin-log{padding:9px 0;border-bottom:1px solid #edf0f5;font-size:12px;color:#536079}.notice-banner{display:none;margin:12px 0;padding:14px;border-radius:16px;background:#fff8e6;border:1px solid #f3d788}.notice-banner.show{display:block}.notice-title{font-weight:900;margin-bottom:5px}.notice-body{white-space:pre-wrap;line-height:1.55;color:#505b70}.admin-notice-list{display:grid;gap:8px;margin-top:12px}.admin-notice-item{padding:12px;border:1px solid #e3e8f1;border-radius:14px;background:#fff}.admin-notice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}@media(max-width:620px){.admin-summary-grid{grid-template-columns:1fr 1fr}.admin-member-actions{grid-template-columns:1fr 84px}.admin-member-actions button{grid-column:1/-1}}
 
-/* v6.9.0: 하단 메뉴 터치 안정화·화면 전환 즉시성 개선 */
+/* v6.9.1: 하단 메뉴 터치 안정화·화면 전환 즉시성 개선 */
 :root{--bottom-nav-space:92px}
 html{scroll-padding-bottom:calc(var(--bottom-nav-space) + 36px + env(safe-area-inset-bottom))}
 body{padding-bottom:calc(var(--bottom-nav-space) + 44px + env(safe-area-inset-bottom))!important}
@@ -170,7 +170,7 @@ body::after{content:"";display:block;height:1px;pointer-events:none}
  .sticky button{min-height:58px;font-size:14px!important}
 }
 .account-form-message{display:none;margin:10px 0 0;padding:12px 13px;border-radius:12px;font-size:13px;font-weight:800;line-height:1.45}.account-form-message.show{display:block}.account-form-message.error{background:#fff0f0;border:1px solid #ffc9c9;color:#b42318}.account-form-message.success{background:#edf9f1;border:1px solid #b7e1c2;color:#087a55}.account-form-message.info{background:#eef6ff;border:1px solid #c7dcfa;color:#194f8c}</style></head><body><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.9.0</span></header>
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.9.1</span></header>
 <nav class="tabs"> <button class="tab active" data-p="sourcing" onclick="showPage('sourcing')">소싱</button><button class="tab" data-p="records" onclick="showPage('records')">기록</button><button class="tab" data-p="cart" onclick="showPage('cart')">장바구니</button><button class="tab" data-p="report" onclick="showPage('report')">통계</button><button class="tab" data-p="settings" onclick="showPage('settings')">설정</button></nav>
 <main class="page active" id="p-sourcing"><div class="modes"><button class="mode active" id="mb-g" onclick="mode('g')">일반상품 소싱</button><button class="mode" id="mb-s" onclick="mode('s')">KREAM·POIZON 리셀</button></div><button class="reset-current" onclick="resetCurrentProduct()">현재 확인 상품 초기화</button>
 <section class="modepage active" id="m-g">
@@ -1162,7 +1162,7 @@ function autoAnalyzeCurrentIfNeeded(){
 }
 window.addEventListener('pageshow',autoAnalyzeCurrentIfNeeded);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoAnalyzeCurrentIfNeeded()});
 
-loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').then(reg=>reg.update().catch(()=>{})).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{try{if(sessionStorage.getItem('rpSwReload680')!=='1'){sessionStorage.setItem('rpSwReload680','1');location.reload()}}catch(e){}});}
+loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').then(reg=>reg.update().catch(()=>{})).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{try{if(sessionStorage.getItem('rpSwReload691')!=='1'){sessionStorage.setItem('rpSwReload691','1');location.reload()}}catch(e){}});}
 
 window.addEventListener('pageshow',()=>{
  try{
@@ -1183,7 +1183,7 @@ const ONBOARDING_KEY='resellPickOnboardingDoneV1';
 function showOnboarding(){if(localStorage.getItem(ONBOARDING_KEY)==='1')return;const m=$('onboardingModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
 function closeOnboarding(never=false){const m=$('onboardingModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}if(never)localStorage.setItem(ONBOARDING_KEY,'1')}
 function exportAppBackup(){
- try{const data={app:'리셀 PICK',version:'6.9.0',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
+ try{const data={app:'리셀 PICK',version:'6.9.1',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
 }
 async function restoreAppBackup(event){const f=event.target.files?.[0];event.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(!data?.storage||typeof data.storage!=='object')throw new Error();if(!confirm('현재 기기의 데이터를 백업 파일 내용으로 복원하시겠습니까?'))return;Object.entries(data.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('복원이 완료되었습니다. 화면을 다시 불러옵니다.');location.reload()}catch(e){alert('올바른 리셀 PICK 백업 파일이 아닙니다.')}}
 function clearAllAppData(){if(!confirm('상품 기록·영수증·장바구니·설정 등 내 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'))return;if(!confirm('정말 전체 삭제하시겠습니까? 필요한 데이터는 먼저 백업해 주세요.'))return;localStorage.clear();alert('내 데이터가 모두 삭제되었습니다.');location.reload()}
@@ -1220,13 +1220,50 @@ function closeLegal(){const m=$('legalModal');if(m){m.classList.remove('show');m
 setTimeout(()=>{renderApiUsage();renderCustomerUsage();renderPlanAdmin();initBetaAccess();showOnboarding()},0);
 
 const CLOUD_EXCLUDE_KEYS=new Set(['resellPickAdminUnlocked']);let accountMode='register';let cloudSnapshotVersion=0;
-function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.9.0',savedAt:new Date().toISOString(),storage}}
-async function accountRequest(url,options={}){const r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});let d={};try{d=await r.json()}catch{}if(!r.ok){const err=new Error(d.error||'요청을 처리하지 못했습니다.');err.status=r.status;err.code=d.code||'';throw err}return d}
+function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.9.1',savedAt:new Date().toISOString(),storage}}
+async function accountRequest(url,options={}){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+ try{
+  const r=await fetch(url,{...options,credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})},signal:options.signal||controller.signal});
+  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
+  if(!r.ok){
+   let message=d.error||'';
+   if(!message&&r.status===404)message='로그인 서버 주소를 찾지 못했습니다. Render 배포 주소에서 앱을 실행해 주세요.';
+   else if(!message&&r.status>=500)message='로그인 서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+   else if(!message)message='로그인 요청을 처리하지 못했습니다.';
+   const err=new Error(message);err.status=r.status;err.code=d.code||'';throw err;
+  }
+  return d;
+ }catch(e){
+  if(e?.name==='AbortError')throw new Error('로그인 서버 응답이 늦습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
+  if(e instanceof TypeError)throw new Error('로그인 서버에 연결하지 못했습니다. Render 배포가 완료됐는지 확인해 주세요.');
+  throw e;
+ }finally{clearTimeout(timer)}
+}
+async function checkLoginServerStatus(){
+ try{const d=await accountRequest('/api/account/login-status',{method:'GET'});if(!d?.ok)throw new Error(d?.error||'로그인 서버 점검 실패');return true}
+ catch(e){setAccountFormMessage(e.message||'로그인 서버에 연결하지 못했습니다.','error');return false}
+}
 function setAccountFormMessage(message='',type='info'){const el=$('accountFormMessage');if(!el)return;el.textContent=message;el.className='account-form-message'+(message?' show '+type:'')}
-function openAccountModal(mode='register'){switchAccountMode(mode);setAccountFormMessage('');const m=$('accountModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false');setTimeout(()=>$('accountEmailInput')?.focus(),80)}
+function openAccountModal(mode='register'){switchAccountMode(mode);setAccountFormMessage('');const m=$('accountModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false');setTimeout(()=>$('accountEmailInput')?.focus(),80);if(mode==='login'){setAccountFormMessage('로그인 서버를 확인하고 있습니다.','info');checkLoginServerStatus().then(ok=>{if(ok)setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 입력해 주세요.','info')})}}
 function closeAccountModal(){const m=$('accountModal');m?.classList.remove('show');m?.setAttribute('aria-hidden','true');setAccountFormMessage('')}
 function switchAccountMode(mode){accountMode=mode;const reg=mode==='register',id=$('accountEmailInput');$('accountModalTitle').textContent=reg?'무료 계정 만들기':'기존 계정 로그인';$('accountNameWrap').style.display=reg?'block':'none';$('accountSubmitBtn').textContent=reg?'계정 만들기':'로그인';$('accountTabRegister').classList.toggle('active',reg);$('accountTabLogin').classList.toggle('active',!reg);if($('forgotPasswordBtn'))$('forgotPasswordBtn').style.display=reg?'none':'block';if($('accountConsentWrap'))$('accountConsentWrap').style.display=reg?'block':'none';if($('accountIdentifierLabel'))$('accountIdentifierLabel').textContent=reg?'이메일':'이메일 또는 회원번호';if(id){id.type=reg?'email':'text';id.inputMode=reg?'email':'text';id.autocomplete=reg?'email':'username';id.placeholder=reg?'seller@example.com':'이메일 또는 6자리 회원번호'}setAccountFormMessage('')}
-async function submitAccount(){const email=($('accountEmailInput')?.value||'').trim(),password=$('accountPasswordInput')?.value||'',display_name=($('accountNameInput')?.value||'').trim(),terms_agreed=!!$('accountTermsAgree')?.checked,privacy_agreed=!!$('accountPrivacyAgree')?.checked,btn=$('accountSubmitBtn');if(!email||!password){setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.','error');return}if(accountMode==='register'&&(!terms_agreed||!privacy_agreed)){setAccountFormMessage('이용약관과 개인정보 처리방침에 모두 동의해 주세요.','error');return}try{btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify({email,password,display_name,terms_agreed,privacy_agreed})});setAccountFormMessage(d.message||'완료되었습니다.','success');await refreshAccountUI();if(accountMode==='login'&&d.user?.is_admin){closeAccountModal();showPage('settings');setTimeout(()=>{const ac=$('adminConsole');if(ac){ac.open=true;ac.scrollIntoView({behavior:'smooth',block:'start'})}},150);return}if(accountMode==='register'){closeAccountModal();if(confirm('계정을 만들었습니다. 현재 기기의 데이터를 클라우드에 바로 저장하시겠습니까?'))await saveToCloud()}else setTimeout(closeAccountModal,450)}catch(e){setAccountFormMessage(e.message||'로그인에 실패했습니다. 입력 내용을 확인해 주세요.','error')}finally{btn.disabled=false;btn.textContent=accountMode==='register'?'계정 만들기':'로그인'}}
+async function submitAccount(){
+ const email=($('accountEmailInput')?.value||'').trim(),password=$('accountPasswordInput')?.value||'',display_name=($('accountNameInput')?.value||'').trim(),terms_agreed=!!$('accountTermsAgree')?.checked,privacy_agreed=!!$('accountPrivacyAgree')?.checked,btn=$('accountSubmitBtn');
+ if(!email||!password){setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.','error');return}
+ if(accountMode==='register'&&(!terms_agreed||!privacy_agreed)){setAccountFormMessage('이용약관과 개인정보 처리방침에 모두 동의해 주세요.','error');return}
+ try{
+  btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');
+  const payload={email,identifier:email,password,display_name,terms_agreed,privacy_agreed};
+  const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify(payload)});
+  setAccountFormMessage(d.message||'완료되었습니다.','success');
+  await refreshAccountUI();
+  if(accountMode==='login'&&!CURRENT_ACCOUNT_USER)throw new Error('로그인은 확인됐지만 세션이 유지되지 않았습니다. 앱을 완전히 종료한 뒤 다시 실행해 주세요.');
+  if(accountMode==='login'&&d.user?.is_admin){closeAccountModal();showPage('settings');setTimeout(()=>{const ac=$('adminConsole');if(ac){ac.open=true;ac.scrollIntoView({behavior:'smooth',block:'start'})}},150);return}
+  if(accountMode==='register'){closeAccountModal();if(confirm('계정을 만들었습니다. 현재 기기의 데이터를 클라우드에 바로 저장하시겠습니까?'))await saveToCloud()}else setTimeout(closeAccountModal,550)
+ }catch(e){setAccountFormMessage(e.message||'로그인에 실패했습니다. 입력 내용을 확인해 주세요.','error')}
+ finally{btn.disabled=false;btn.textContent=accountMode==='register'?'계정 만들기':'로그인'}
+}
 async function refreshAccountUI(){try{const d=await accountRequest('/api/account/me');const on=!!d.authenticated,u=d.user||{};CURRENT_ACCOUNT_USER=on?u:null;$('accountLoggedOut').style.display=on?'none':'block';$('accountLoggedIn').style.display=on?'block':'none';$('accountStateBadge').textContent=on?'로그인됨':'로그아웃';$('accountStateBadge').classList.toggle('on',on);const ac=$('adminConsole');if(ac){ac.classList.toggle('show',!!(on&&u.is_admin));if(!(on&&u.is_admin))ac.removeAttribute('open')}if(on){$('accountDisplayName').textContent=u.display_name||'리셀 PICK 회원';$('accountEmail').textContent=(u.email||'')+(u.is_admin?' · 관리자':'');if($('accountMemberNumber'))$('accountMemberNumber').textContent=u.member_number?'회원번호 '+String(u.member_number):'';const cs=d.consents||{};if($('accountConsentStatus')){$('accountConsentStatus').textContent=(cs.terms_current&&cs.privacy_current)?'필수 약관 동의 완료':'최신 약관 재동의 필요';$('accountConsentStatus').style.color=(cs.terms_current&&cs.privacy_current)?'#16854d':'#c23b2a'};if(PLAN_TABLE[u.plan]){localStorage.setItem(PLAN_KEY,u.plan);renderCustomerUsage()}renderSubscriptionDays(u);if(u.is_admin){loadAdminDashboard();loadAdminNotices()}}}catch(e){CURRENT_ACCOUNT_USER=null;const ac=$('adminConsole');if(ac)ac.classList.remove('show')}}
 function renderSubscriptionDays(u={}){const paid=['pro','proplus'].includes(u.plan);let days=u.days_remaining,expiry=u.plan_expires_at;if($('paidDaysLeft'))$('paidDaysLeft').textContent=paid&&days!==null&&days!==undefined?days+'일':'결제 전';if($('customerPlanDays'))$('customerPlanDays').textContent=paid&&days!==null&&days!==undefined?days+'일':'-';if($('customerPlanExpiry'))$('customerPlanExpiry').textContent=expiry?new Date(expiry).toLocaleDateString('ko-KR'):'결제 전';if(u.subscription_expired){if($('paidDaysLeft'))$('paidDaysLeft').textContent='기간 만료';if($('customerPlanDays'))$('customerPlanDays').textContent='기간 만료'}}
 function openPasswordResetModal(){closeAccountModal();const email=($('accountEmailInput')?.value||'').trim();if($('resetEmailInput'))$('resetEmailInput').value=email;const m=$('passwordResetModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false')}
@@ -1274,7 +1311,7 @@ async function loadAdminAudit(){try{const d=await accountRequest('/api/admin/aud
 
 
 
-// v6.9.0: 실제 메뉴 높이 측정 + 모바일 터치 이벤트 직접 처리
+// v6.9.1: 실제 메뉴 높이 측정 + 모바일 터치 이벤트 직접 처리
 function syncBottomNavSpace(){
  const nav=$('bottomNav')||document.querySelector('.sticky');if(!nav)return;
  const height=Math.max(78,Math.ceil(nav.getBoundingClientRect().height));
