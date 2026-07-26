@@ -499,11 +499,11 @@ def require_member_for_app_api():
 @app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
     u=_current_user()
-    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.10.2'),401
+    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.11.0'),401
     sid=str(u.get('auth_session_id') or session.get('auth_session_id') or '')
     auto_login=bool(u.get('auto_login') or session.get('auto_login'))
     token=_issue_auth_token(u['id'],u.get('auth_version') or session.get('auth_version') or 1,sid,auto_login)
-    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.10.2','auth_token':token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
+    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.11.0','auth_token':token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
     return _auth_json_response(payload,token=token,persistent=auto_login)
 
 @app.post('/api/account/register')
@@ -535,7 +535,7 @@ def account_register():
         auto_login=False;sid=_create_auth_session(uid,1,auto_login)
         session.clear();session.permanent=False;session['user_id']=uid;session['auth_version']=1;session['auth_session_id']=sid;session['auto_login']=False
         user=_current_user();token=_issue_auth_token(uid,1,sid,False)
-        return _auth_json_response({'ok':True,'user':user,'auth_token':token,'verification_required':bool(code),'server_version':'6.10.2','auto_login':False,'idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=False)
+        return _auth_json_response({'ok':True,'user':user,'auth_token':token,'verification_required':bool(code),'server_version':'6.11.0','auto_login':False,'idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=False)
     except IntegrityError:return jsonify(error='이미 가입된 이메일입니다. Gmail의 점(.) 또는 +별칭을 바꾼 주소도 같은 계정으로 처리됩니다.'),409
 
 @app.post('/api/account/consents')
@@ -635,7 +635,7 @@ def account_login():
         user['auto_login']=auto_login;user['auth_session_id']=sid
         token=_issue_auth_token(row['id'],auth_version,sid,auto_login)
         return _auth_json_response({
-            'ok':True,'user':user,'auth_token':token,'server_version':'6.10.2','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
+            'ok':True,'user':user,'auth_token':token,'server_version':'6.11.0','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
         },token=token,persistent=auto_login)
     except Exception:
@@ -647,10 +647,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.10.2',idle_timeout_seconds=AUTH_IDLE_SECONDS)
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.11.0',idle_timeout_seconds=AUTH_IDLE_SECONDS)
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.10.2'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.11.0'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1702,6 +1702,7 @@ def export_excel():
         sneakers=(body.get('sneakers') or [])[:2000]
         cart=(body.get('cart') or [])[:3000]
         receipts=(body.get('receipts') or [])[:3000]
+        memos=(body.get('memos') or [])[:2000]
         receipt_only=bool(body.get('receiptOnly'))
         settings=body.get('settings') or {}
 
@@ -1729,15 +1730,19 @@ def export_excel():
         ws.write('A4','일반상품 기록',text); ws.write_number('B4',len(general),integer)
         ws.write('A5','스니커즈 기록',text); ws.write_number('B5',len(sneakers),integer)
         ws.write('A6','영수증 기록',text); ws.write_number('B6',len(receipts),integer)
-        ws.write('A6','장바구니',text); ws.write_number('B6',len(cart),integer)
-        ws.write('A8','다운로드 일시',head); ws.write_datetime('B8',datetime.now(),dtfmt)
-        ws.write('A10','세금 계산 기준',head); ws.write('B10','설정값',head)
+        ws.write('A7','자동 소싱 메모',text); ws.write_number('B7',len(memos),integer)
+        ws.write('A8','장바구니',text); ws.write_number('B8',len(cart),integer)
+        ws.write('A10','다운로드 일시',head); ws.write_datetime('B10',datetime.now(),dtfmt)
+        ws.write('A12','세금 계산 기준',head); ws.write('B12','설정값',head)
         labels=[('예상 소득세율',settings.get('incomeTaxRate',0),'percent'),('부가세 계산',settings.get('useVat','yes'),'text'),('일반상품 판매 수수료율',settings.get('fee',11.8),'percent'),('일반상품 배송비',settings.get('ship',4000),'money'),('스니커즈 판매 수수료율',settings.get('sFee',6),'percent'),('스니커즈 배송비',settings.get('sShip',3000),'money')]
-        for r,(lab,val,kind) in enumerate(labels,11):
+        for r,(lab,val,kind) in enumerate(labels,13):
             ws.write(r-1,0,lab,text)
-            fmt=money if kind=='money' else percent
-            ws.write_number(r-1,1,float(val or 0),fmt)
-        ws.write('A19','※ 앱에 저장된 예상 계산값이며 실제 신고세액과 다를 수 있습니다.',note)
+            if kind=='text':
+                ws.write(r-1,1,'사용' if str(val).lower() not in {'no','false','0','미사용'} else '미사용',text)
+            else:
+                fmt=money if kind=='money' else percent
+                ws.write_number(r-1,1,float(val or 0),fmt)
+        ws.write('A21','※ 앱에 저장된 예상 계산값이며 실제 신고세액과 다를 수 있습니다.',note)
         ws.set_column('A:A',24); ws.set_column('B:B',20)
 
         # 일반상품 기록
@@ -1791,21 +1796,34 @@ def export_excel():
 
         # 영수증 기록 (인식 완료 즉시 브라우저에 자동 저장된 데이터)
         ws=wb.add_worksheet('영수증 기록')
-        headers=['자동 저장일시','영수증 구매일','매장명','영수증 총액','상품 순번','상품명','수량','상품금액','인식 신뢰도','원본 파일명']
+        headers=['자동 저장일시','사용 구분','영수증 구매일','매장명','영수증 총액','상품 순번','상품명','수량','상품금액','인식 신뢰도','원본 파일명']
         for c,h in enumerate(headers): ws.write(0,c,h,head)
         rr=1
         for x in receipts:
             items=x.get('items') or [{}]
             for seq,item in enumerate(items,1):
-                vals=[parse_dt(x.get('savedAt') or x.get('date')),x.get('purchaseDate',''),x.get('store',''),x.get('total',0),seq,item.get('name',''),item.get('qty',1),item.get('amount',0),x.get('confidence',''),x.get('sourceFile','')]
+                vals=[parse_dt(x.get('savedAt') or x.get('date')),x.get('sourceLabel') or ('KREAM·POIZON 리셀' if x.get('sourceMode')=='resell' else '일반상품'),x.get('purchaseDate',''),x.get('store',''),x.get('total',0),seq,item.get('name',''),item.get('qty',1),item.get('amount',0),x.get('confidence',''),x.get('sourceFile','')]
                 for c,v in enumerate(vals):
-                    fmt=dtfmt if c==0 and isinstance(v,datetime) else (money if c in (3,7) else (integer if c in (4,6) else text))
+                    fmt=dtfmt if c==0 and isinstance(v,datetime) else (money if c in (4,8) else (integer if c in (5,7) else text))
                     if isinstance(v,(int,float)) and c!=0: ws.write_number(rr,c,float(v),fmt)
                     elif isinstance(v,datetime): ws.write_datetime(rr,c,v,fmt)
                     else: ws.write(rr,c,v,fmt)
                 rr+=1
         ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,rr-1),len(headers)-1)
-        ws.set_column(0,0,19); ws.set_column(1,2,18); ws.set_column(3,4,14); ws.set_column(5,5,38); ws.set_column(6,7,14); ws.set_column(8,9,18)
+        ws.set_column(0,0,19); ws.set_column(1,3,18); ws.set_column(4,5,14); ws.set_column(6,6,38); ws.set_column(7,8,14); ws.set_column(9,10,18)
+
+        # 자동 소싱 메모
+        ws=wb.add_worksheet('자동 소싱 메모')
+        headers=['저장일시','구분','상품명/모델','메모 내용']
+        for c,h in enumerate(headers): ws.write(0,c,h,head)
+        for r,x in enumerate(memos,1):
+            vals=[parse_dt(x.get('date')),x.get('type') or ('KREAM·POIZON 리셀' if x.get('mode')=='resell' else '일반상품'),x.get('title',''),x.get('text','')]
+            for c,v in enumerate(vals):
+                fmt=dtfmt if c==0 and isinstance(v,datetime) else text
+                if isinstance(v,datetime): ws.write_datetime(r,c,v,fmt)
+                else: ws.write(r,c,v,fmt)
+        ws.freeze_panes(1,0); ws.autofilter(0,0,max(1,len(memos)),len(headers)-1)
+        ws.set_column(0,0,19); ws.set_column(1,2,24); ws.set_column(3,3,70)
 
         # 장바구니
         ws=wb.add_worksheet('장바구니')
@@ -1824,7 +1842,7 @@ def export_excel():
         ws.set_column(0,1,12); ws.set_column(2,3,28); ws.set_column(4,9,16); ws.set_column(10,10,18)
 
         wb.close(); out.seek(0)
-        filename=('픽셀_영수증기록_' if receipt_only else '픽셀_소싱데이터_')+datetime.now().strftime('%Y%m%d_%H%M')+'.xlsx'
+        filename=('리셀PICK_영수증기록_' if receipt_only else '리셀PICK_소싱데이터_')+datetime.now().strftime('%Y%m%d_%H%M')+'.xlsx'
         return send_file(out,as_attachment=True,download_name=filename,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as x:
         return jsonify(error=f'엑셀 생성 오류: {x}'),500
@@ -1833,10 +1851,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.10.2',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.11.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.10.2',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.11.0',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
