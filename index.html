@@ -140,7 +140,7 @@ button:hover{filter:brightness(1.02)}
 
 .admin-console{display:none}.admin-console.show{display:block}.admin-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.admin-member-list{display:grid;gap:10px;margin-top:12px}.admin-member{border:1px solid #e3e8f1;border-radius:16px;padding:14px;background:#fff}.admin-member-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-member-email{font-weight:900;word-break:break-all}.admin-member-meta{font-size:12px;color:#6b768d;line-height:1.55;margin-top:4px}.admin-member-actions{display:grid;grid-template-columns:1.25fr 1fr 105px;gap:8px;margin-top:10px}.admin-gift-box,.admin-restrict-box{margin-top:11px;padding:12px;border-radius:13px}.admin-gift-box{background:#f2f8ff;border:1px solid #cfe1f8}.admin-restrict-box{background:#fff8f1;border:1px solid #f3d6b8}.admin-box-title{font-size:13px;font-weight:950;margin-bottom:8px}.admin-gift-row{display:grid;grid-template-columns:1fr 105px 112px;gap:8px}.admin-day-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.admin-day-quick button{padding:7px 10px;font-size:11px}.admin-restrict-row{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:8px}.admin-reason-view{margin-top:8px;padding:8px 10px;border-radius:10px;background:#fff0f0;color:#a62525;font-size:12px;line-height:1.45;font-weight:800}.admin-plan-help{margin-top:8px;padding:9px 11px;border-radius:11px;background:#f7faff;color:#536079;font-size:12px;line-height:1.5}.admin-auto-plan{margin-top:10px;padding:11px 12px;border:1px solid #bfe5cf;border-radius:12px;background:#f0fff6;color:#087c4b;font-weight:900;text-align:center}.admin-badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eef3ff;color:#234e9a;font-size:11px;font-weight:900}.admin-badge.stop{background:#fff0f0;color:#b42318}.admin-empty{padding:20px;text-align:center;color:#75819a}.admin-log{padding:9px 0;border-bottom:1px solid #edf0f5;font-size:12px;color:#536079}.notice-banner{display:none;margin:12px 0;padding:14px;border-radius:16px;background:#fff8e6;border:1px solid #f3d788}.notice-banner.show{display:block}.notice-title{font-weight:900;margin-bottom:5px}.notice-body{white-space:pre-wrap;line-height:1.55;color:#505b70}.admin-notice-list{display:grid;gap:8px;margin-top:12px}.admin-notice-item{padding:12px;border:1px solid #e3e8f1;border-radius:14px;background:#fff}.admin-notice-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}@media(max-width:620px){.admin-summary-grid{grid-template-columns:1fr 1fr}.admin-member-actions{grid-template-columns:1fr 1fr}.admin-member-actions button{grid-column:1/-1}.admin-gift-row,.admin-restrict-row{grid-template-columns:1fr}.admin-gift-row button,.admin-restrict-row button{width:100%}}
 
-/* v6.11.2: 하단 메뉴 터치 안정화·화면 전환 즉시성 개선 */
+/* v6.11.1: 하단 메뉴 터치 안정화·화면 전환 즉시성 개선 */
 :root{--bottom-nav-space:92px}
 html{scroll-padding-bottom:calc(var(--bottom-nav-space) + 36px + env(safe-area-inset-bottom))}
 body{padding-bottom:calc(var(--bottom-nav-space) + 44px + env(safe-area-inset-bottom))!important}
@@ -171,7 +171,7 @@ body::after{content:"";display:block;height:1px;pointer-events:none}
 }
 .account-form-message{display:none;margin:10px 0 0;padding:12px 13px;border-radius:12px;font-size:13px;font-weight:800;line-height:1.45}.account-form-message.show{display:block}.account-form-message.error{background:#fff0f0;border:1px solid #ffc9c9;color:#b42318}.account-form-message.success{background:#edf9f1;border:1px solid #b7e1c2;color:#087a55}.account-form-message.info{background:#eef6ff;border:1px solid #c7dcfa;color:#194f8c}
 .password-wrap{position:relative}.password-wrap input{padding-right:58px}.password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:44px;height:40px;padding:0;border-radius:10px;background:#eef3f8;color:#173a63;font-size:21px;display:grid;place-items:center;box-shadow:none}.password-toggle:active{transform:translateY(-50%) scale(.96)}.login-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 8px}.login-check{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1.5px solid var(--line);border-radius:13px;background:#f7f9fc;font-size:13px;font-weight:900;color:#273b52;cursor:pointer}.login-check input{width:20px;height:20px;margin:0;accent-color:var(--n)}.login-check:has(input:checked){background:#eaf4ff;border-color:#7bb4eb;color:#0c4d87}.auto-login-hint{margin:-1px 0 9px;color:#68788b;font-size:11px;font-weight:700;line-height:1.45}.account-sheet input[type=checkbox]{flex:0 0 auto}@media(max-width:360px){.login-options{grid-template-columns:1fr}.login-check{justify-content:flex-start;padding:0 13px}}
-/* v6.11.2: 비회원 전체 기능 잠금 */
+/* v6.11.1: 비회원 전체 기능 잠금 */
 .auth-gate{display:none;margin:14px 0 24px;padding:28px 20px;border-radius:24px;background:linear-gradient(145deg,#0d2848,#165f9f);color:#fff;text-align:center;box-shadow:0 16px 38px rgba(14,54,92,.24)}
 .auth-gate-logo{width:76px;height:76px;border-radius:20px;box-shadow:0 10px 28px rgba(0,0,0,.24);margin-bottom:15px}
 .auth-gate h2{margin:0;font-size:25px;line-height:1.35}.auth-gate p{margin:11px auto 0;max-width:520px;font-size:14px;line-height:1.7;color:rgba(255,255,255,.88);font-weight:700}
@@ -179,14 +179,14 @@ body::after{content:"";display:block;height:1px;pointer-events:none}
 .auth-gate-note{margin-top:13px;font-size:12px;color:rgba(255,255,255,.75);font-weight:700}
 body.auth-locked .auth-gate{display:block}body.auth-locked .tabs,body.auth-locked .page,body.auth-locked .sticky{display:none!important}body.auth-locked{padding-bottom:24px!important}body.auth-locked .app{padding-bottom:24px!important}
 @media(max-width:480px){.auth-gate{padding:24px 16px}.auth-gate-actions{grid-template-columns:1fr}.auth-gate h2{font-size:23px}}
-/* v6.11.2: 카메라 촬영 중 하단 고정탭 완전 숨김 */
+/* v6.11.1: 카메라 촬영 중 하단 고정탭 완전 숨김 */
 .camera-modal{height:100dvh;max-height:100dvh;z-index:2147483647!important}
 .camera-video-wrap{min-height:0}.camera-bottom{position:relative;z-index:3;flex:0 0 auto}
 body.rear-camera-open{overflow:hidden!important;overscroll-behavior:none;touch-action:none}
 body.rear-camera-open .sticky{display:none!important;visibility:hidden!important;pointer-events:none!important}
 body.rear-camera-open .camera-modal{display:flex!important}
 
-/* v6.11.2 안정화: 관리자 회원관리 바로가기 · 잘못된 겹침 방지 */
+/* v6.11.1 안정화: 관리자 회원관리 바로가기 · 잘못된 겹침 방지 */
 .admin-member-shortcut{border:2px solid #8fc4f1;background:linear-gradient(145deg,#eef7ff,#ffffff);box-shadow:0 12px 28px rgba(18,82,139,.13)}
 .admin-member-shortcut h2{margin:5px 0 8px}.admin-member-shortcut .primary{min-height:58px;font-size:17px}
 .admin-member-shortcut .shortcut-note{font-size:13px;line-height:1.6;color:#49627d;font-weight:750;margin-bottom:12px}
@@ -194,12 +194,12 @@ body.rear-camera-open .camera-modal{display:flex!important}
 @media(max-width:520px){.admin-member-shortcut .primary{min-height:60px;font-size:16px}}
 .admin-member-inline{margin-top:14px;padding:14px;box-shadow:none}.admin-member-inline h2{font-size:20px}.admin-member-inline .shortcut-note{margin-bottom:0}
 
-/* v6.11.2 영수증·자동 소싱 메모 */
+/* v6.11.1 영수증·자동 소싱 메모 */
 .memo-status{margin-top:8px;font-size:12px;line-height:1.5;color:#64748b;font-weight:750}
 .memo-record-text{white-space:pre-wrap;word-break:break-word;line-height:1.55;margin-top:7px;padding:10px;border-radius:11px;background:#f7f9fc;color:#334155}
 .receipt-source-badge{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;background:#e9f4ff;color:#145b98;font-size:10px;font-weight:900;vertical-align:middle}
 </style></head><body class="auth-locked"><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.11.2</span></header><section class="auth-gate" id="authGate" aria-live="polite">
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.11.1</span></header><section class="auth-gate" id="authGate" aria-live="polite">
 <img class="auth-gate-logo" src="/icon-192.png" alt="리셀 PICK 로고">
 <h2>회원가입 후 이용해 주세요</h2>
 <p>사진 촬영·사진 분석, 상품 검색, 마진 계산, 기록, 장바구니, 통계, 설정 등 리셀 PICK의 모든 기능은 회원가입 또는 로그인 후 이용할 수 있습니다.</p>
@@ -580,7 +580,7 @@ function openCoupangSearch(name,preparedWindow){analyzeMarketKeyword(true).catch
 function naverSearchUrl(name){const q=String(name||buildGeneralQuery(window.generalScanData)||$('gName')?.value||'').trim();return q?'https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q):''}
 function openNaverSearch(name,preparedWindow){analyzeMarketKeyword(true).catch(()=>{});const url=naverSearchUrl(name);if(!url){alert('상품명을 먼저 입력하거나 사진으로 인식하세요.');return false}return openGeneralUrl(url,'네이버쇼핑',preparedWindow)}
 function writeAutoMoveWaitingPage(w,marketName){
- // v6.11.2 안정화: 별도 about:blank 대기 화면을 사용하지 않습니다.
+ // v6.11.1 안정화: 별도 about:blank 대기 화면을 사용하지 않습니다.
  return null;
 }
 function prepareSearchWindow(market='coupang'){return null}
@@ -1277,10 +1277,10 @@ const ONBOARDING_KEY='resellPickOnboardingDoneV1';
 function showOnboarding(){if(localStorage.getItem(ONBOARDING_KEY)==='1')return;const m=$('onboardingModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
 function closeOnboarding(never=false){const m=$('onboardingModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}if(never)localStorage.setItem(ONBOARDING_KEY,'1')}
 function exportAppBackup(){
- try{const data={app:'리셀 PICK',version:'6.11.2',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
+ try{const data={app:'리셀 PICK',version:'6.11.3',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
 }
 async function restoreAppBackup(event){const f=event.target.files?.[0];event.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(!data?.storage||typeof data.storage!=='object')throw new Error();if(!confirm('현재 기기의 데이터를 백업 파일 내용으로 복원하시겠습니까?'))return;Object.entries(data.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('복원이 완료되었습니다. 화면을 다시 불러옵니다.');location.reload()}catch(e){alert('올바른 리셀 PICK 백업 파일이 아닙니다.')}}
-async function clearAllAppData(){if(!confirm('상품 기록·영수증·장바구니·설정 등 내 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'))return;if(!confirm('정말 전체 삭제하시겠습니까? 필요한 데이터는 먼저 백업해 주세요.'))return;localStorage.clear();await clearAuthToken(true);alert('내 데이터가 모두 삭제되었습니다.');location.reload()}
+function clearAllAppData(){if(!confirm('상품 기록·영수증·장바구니·설정 등 내 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'))return;if(!confirm('정말 전체 삭제하시겠습니까? 필요한 데이터는 먼저 백업해 주세요.'))return;localStorage.clear();alert('내 데이터가 모두 삭제되었습니다.');location.reload()}
 const PLAN_KEY='resellPickTestPlanV1';
 const PLAN_TABLE={free:{name:'무료',limit:30,price:0},pro:{name:'PRO',limit:1000,price:9900},proplus:{name:'PRO+',limit:3000,price:19900},admin:{name:'관리자 무제한',limit:null,price:0}};
 function currentPlanKey(){if(CURRENT_ACCOUNT_USER?.is_admin)return 'admin';const k=localStorage.getItem(PLAN_KEY)||'free';return PLAN_TABLE[k]&&k!=='admin'?k:'free'}
@@ -1313,48 +1313,26 @@ function closeLegal(){const m=$('legalModal');if(m){m.classList.remove('show');m
 
 setTimeout(()=>{renderApiUsage();renderCustomerUsage();renderPlanAdmin();initBetaAccess();showOnboarding()},0);
 
-const AUTH_TOKEN_KEY='resellPickAuthToken',AUTH_TOKEN_SAVED_AT_KEY='resellPickAuthTokenSavedAt',AUTH_RESTORE_TOKEN_KEY='resellPickRestoreToken',AUTH_LAST_ACTIVITY_KEY='resellPickAuthLastActivity',REMEMBER_LOGIN_ID_KEY='resellPickRememberLoginId',AUTO_LOGIN_PREF_KEY='resellPickAutoLoginPreference';const AUTH_IDLE_MS=60*60*1000,AUTH_DB_NAME='resellPickSecureSessionV1',AUTH_DB_STORE='session';let ACCOUNT_REFRESH_PROMISE=null,ACCOUNT_RESTORE_PROMISE=null;const CLOUD_EXCLUDE_KEYS=new Set(['resellPickAdminUnlocked',AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,AUTH_RESTORE_TOKEN_KEY,AUTH_LAST_ACTIVITY_KEY,REMEMBER_LOGIN_ID_KEY,AUTO_LOGIN_PREF_KEY]);let AUTH_TOKEN_MEMORY='',AUTH_RESTORE_MEMORY='';let accountMode='register';let cloudSnapshotVersion=0;
-function openAuthDb(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return reject(new Error('indexedDB unavailable'));const req=indexedDB.open(AUTH_DB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(AUTH_DB_STORE))db.createObjectStore(AUTH_DB_STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('indexedDB open failed'))})}
-async function authDbSet(key,value){try{const db=await openAuthDb();await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readwrite');tx.objectStore(AUTH_DB_STORE).put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){return false}}
-async function authDbGet(key){try{const db=await openAuthDb();const value=await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readonly'),req=tx.objectStore(AUTH_DB_STORE).get(key);req.onsuccess=()=>resolve(req.result||'');req.onerror=()=>reject(req.error)});db.close();return value||''}catch(e){return ''}}
-async function authDbDeleteAll(){try{const db=await openAuthDb();await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readwrite');tx.objectStore(AUTH_DB_STORE).clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}catch(e){}}
-function markAuthActivity(){const now=String(Date.now());try{localStorage.setItem(AUTH_LAST_ACTIVITY_KEY,now)}catch(e){}authDbSet(AUTH_LAST_ACTIVITY_KEY,now)}
-async function hydratePersistentAuth(){
- try{const saved=Number(localStorage.getItem(AUTH_LAST_ACTIVITY_KEY)||0);if(saved&&Date.now()-saved>AUTH_IDLE_MS){await clearAuthToken(true);return false}}catch(e){}
- let token=authToken(),restore=authRestoreToken();
- if(!token)token=String(await authDbGet(AUTH_TOKEN_KEY)||'');
- if(!restore)restore=String(await authDbGet(AUTH_RESTORE_TOKEN_KEY)||'');
- if(token){AUTH_TOKEN_MEMORY=token;try{localStorage.setItem(AUTH_TOKEN_KEY,token)}catch(e){}}
- if(restore){AUTH_RESTORE_MEMORY=restore;try{localStorage.setItem(AUTH_RESTORE_TOKEN_KEY,restore)}catch(e){}}
- return !!(token||restore)
-}
-function authToken(){
- if(AUTH_TOKEN_MEMORY)return AUTH_TOKEN_MEMORY;
- try{
-  const local=localStorage.getItem(AUTH_TOKEN_KEY)||'';
-  if(local){AUTH_TOKEN_MEMORY=local;return local}
-  const legacy=sessionStorage.getItem(AUTH_TOKEN_KEY)||'';
-  if(legacy){saveAuthToken(legacy,true);return legacy}
- }catch(e){}
- return '';
-}
-function authRestoreToken(){if(AUTH_RESTORE_MEMORY)return AUTH_RESTORE_MEMORY;try{const v=localStorage.getItem(AUTH_RESTORE_TOKEN_KEY)||'';if(v){AUTH_RESTORE_MEMORY=v;return v}}catch(e){}return ''}
+const AUTH_TOKEN_KEY='resellPickAuthToken',AUTH_TOKEN_SAVED_AT_KEY='resellPickAuthTokenSavedAt',RESTORE_TOKEN_KEY='resellPickRestoreToken',RESTORE_TOKEN_SAVED_AT_KEY='resellPickRestoreTokenSavedAt',AUTH_LAST_ACTIVITY_KEY='resellPickAuthLastActivity',REMEMBER_LOGIN_ID_KEY='resellPickRememberLoginId',AUTO_LOGIN_PREF_KEY='resellPickAutoLoginPreference';
+const AUTH_IDLE_MS=60*60*1000,AUTH_DB_NAME='resellPickSecureSession',AUTH_DB_STORE='session';
+let ACCOUNT_REFRESH_PROMISE=null;const CLOUD_EXCLUDE_KEYS=new Set(['resellPickAdminUnlocked',AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,RESTORE_TOKEN_KEY,RESTORE_TOKEN_SAVED_AT_KEY,AUTH_LAST_ACTIVITY_KEY,REMEMBER_LOGIN_ID_KEY,AUTO_LOGIN_PREF_KEY]);let AUTH_TOKEN_MEMORY='',RESTORE_TOKEN_MEMORY='';let accountMode='register';let cloudSnapshotVersion=0;let AUTH_STORAGE_READY=null,AUTH_LAST_TOUCH_WRITE=0;
+function authDbOpen(){return new Promise((resolve,reject)=>{try{const req=indexedDB.open(AUTH_DB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(AUTH_DB_STORE))db.createObjectStore(AUTH_DB_STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)}catch(e){reject(e)}})}
+async function authDbGet(key){try{const db=await authDbOpen();return await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readonly'),req=tx.objectStore(AUTH_DB_STORE).get(key);req.onsuccess=()=>resolve(req.result||'');req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close()})}catch(e){return ''}}
+async function authDbSet(key,value){try{const db=await authDbOpen();await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readwrite');tx.objectStore(AUTH_DB_STORE).put(value,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){return false}}
+async function authDbDelete(key){try{const db=await authDbOpen();await new Promise((resolve,reject)=>{const tx=db.transaction(AUTH_DB_STORE,'readwrite');tx.objectStore(AUTH_DB_STORE).delete(key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)});db.close()}catch(e){}}
+function authToken(){if(AUTH_TOKEN_MEMORY)return AUTH_TOKEN_MEMORY;try{const local=localStorage.getItem(AUTH_TOKEN_KEY)||'';if(local){AUTH_TOKEN_MEMORY=local;return local}const legacy=sessionStorage.getItem(AUTH_TOKEN_KEY)||'';if(legacy){AUTH_TOKEN_MEMORY=legacy;return legacy}}catch(e){}return ''}
+function restoreToken(){if(RESTORE_TOKEN_MEMORY)return RESTORE_TOKEN_MEMORY;try{const local=localStorage.getItem(RESTORE_TOKEN_KEY)||'';if(local){RESTORE_TOKEN_MEMORY=local;return local}}catch(e){}return ''}
 function authHeaders(extra={}){const token=authToken();return {...extra,...(token?{'Authorization':'Bearer '+token,'X-Resell-Pick-Token':token}:{})}}
-function memberFetch(url,options={}){
- const headers=authHeaders(options.headers||{});
- return fetch(url,{...options,credentials:'include',cache:options.cache||'no-store',headers});
-}
-function saveAuthToken(token,persistent=true){
- AUTH_TOKEN_MEMORY=String(token||'');
- try{sessionStorage.removeItem(AUTH_TOKEN_KEY)}catch(e){}
- if(!AUTH_TOKEN_MEMORY){return false}
- let ok=false;
- try{localStorage.setItem(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(Date.now()));ok=localStorage.getItem(AUTH_TOKEN_KEY)===AUTH_TOKEN_MEMORY}catch(e){try{sessionStorage.setItem(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);ok=sessionStorage.getItem(AUTH_TOKEN_KEY)===AUTH_TOKEN_MEMORY}catch(_){}}
- authDbSet(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);markAuthActivity();return ok;
-}
-function saveRestoreToken(token){AUTH_RESTORE_MEMORY=String(token||'');if(!AUTH_RESTORE_MEMORY)return false;let ok=false;try{localStorage.setItem(AUTH_RESTORE_TOKEN_KEY,AUTH_RESTORE_MEMORY);ok=localStorage.getItem(AUTH_RESTORE_TOKEN_KEY)===AUTH_RESTORE_MEMORY}catch(e){}authDbSet(AUTH_RESTORE_TOKEN_KEY,AUTH_RESTORE_MEMORY);markAuthActivity();return ok}
-async function clearAuthToken(clearPersistent=true){AUTH_TOKEN_MEMORY='';AUTH_RESTORE_MEMORY='';try{localStorage.removeItem(AUTH_TOKEN_KEY);localStorage.removeItem(AUTH_TOKEN_SAVED_AT_KEY);localStorage.removeItem(AUTH_RESTORE_TOKEN_KEY);localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);sessionStorage.removeItem(AUTH_TOKEN_KEY)}catch(e){}if(clearPersistent)await authDbDeleteAll()}
-function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.11.2',savedAt:new Date().toISOString(),storage}}
+function memberFetch(url,options={}){const headers=authHeaders(options.headers||{});return fetch(url,{...options,credentials:'include',cache:options.cache||'no-store',headers})}
+async function hydrateAuthStorage(){if(AUTH_STORAGE_READY)return AUTH_STORAGE_READY;AUTH_STORAGE_READY=(async()=>{try{AUTH_TOKEN_MEMORY=localStorage.getItem(AUTH_TOKEN_KEY)||'';RESTORE_TOKEN_MEMORY=localStorage.getItem(RESTORE_TOKEN_KEY)||''}catch(e){}if(!AUTH_TOKEN_MEMORY)AUTH_TOKEN_MEMORY=String(await authDbGet(AUTH_TOKEN_KEY)||'');if(!RESTORE_TOKEN_MEMORY)RESTORE_TOKEN_MEMORY=String(await authDbGet(RESTORE_TOKEN_KEY)||'');try{if(AUTH_TOKEN_MEMORY)localStorage.setItem(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);if(RESTORE_TOKEN_MEMORY)localStorage.setItem(RESTORE_TOKEN_KEY,RESTORE_TOKEN_MEMORY)}catch(e){}return true})();return AUTH_STORAGE_READY}
+async function saveAuthBundle(data={}){const token=String(data.auth_token||'').trim(),restore=String(data.restore_token||'').trim(),now=Date.now();if(token){AUTH_TOKEN_MEMORY=token;try{localStorage.setItem(AUTH_TOKEN_KEY,token);localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(now))}catch(e){}await authDbSet(AUTH_TOKEN_KEY,token)}if(restore){RESTORE_TOKEN_MEMORY=restore;try{localStorage.setItem(RESTORE_TOKEN_KEY,restore);localStorage.setItem(RESTORE_TOKEN_SAVED_AT_KEY,String(now))}catch(e){}await authDbSet(RESTORE_TOKEN_KEY,restore)}if(token||restore)touchAuthActivity(true);return !!(token||restore)}
+function saveAuthToken(token,persistent=true){AUTH_TOKEN_MEMORY=String(token||'');if(!AUTH_TOKEN_MEMORY){clearAuthToken();return false}try{localStorage.setItem(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(Date.now()));sessionStorage.removeItem(AUTH_TOKEN_KEY)}catch(e){try{sessionStorage.setItem(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY)}catch(_){}}authDbSet(AUTH_TOKEN_KEY,AUTH_TOKEN_MEMORY);touchAuthActivity(true);return true}
+function touchAuthActivity(force=false){const now=Date.now();if(!force&&now-AUTH_LAST_TOUCH_WRITE<30000)return;AUTH_LAST_TOUCH_WRITE=now;try{localStorage.setItem(AUTH_LAST_ACTIVITY_KEY,String(now))}catch(e){}authDbSet(AUTH_LAST_ACTIVITY_KEY,String(now))}
+function storedAuthLastActivity(){try{return Number(localStorage.getItem(AUTH_LAST_ACTIVITY_KEY)||localStorage.getItem(AUTH_TOKEN_SAVED_AT_KEY)||0)}catch(e){return 0}}
+function deviceSessionWithinHour(){const last=storedAuthLastActivity();return !!last&&Date.now()-last<AUTH_IDLE_MS}
+async function clearAuthToken(){AUTH_TOKEN_MEMORY='';RESTORE_TOKEN_MEMORY='';try{[AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,RESTORE_TOKEN_KEY,RESTORE_TOKEN_SAVED_AT_KEY,AUTH_LAST_ACTIVITY_KEY].forEach(k=>localStorage.removeItem(k));sessionStorage.removeItem(AUTH_TOKEN_KEY)}catch(e){}await Promise.all([authDbDelete(AUTH_TOKEN_KEY),authDbDelete(RESTORE_TOKEN_KEY),authDbDelete(AUTH_LAST_ACTIVITY_KEY)])}
+async function restoreSessionWithDeviceToken(){await hydrateAuthStorage();const restore=restoreToken();if(!restore||!deviceSessionWithinHour())return null;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{const r=await fetch('/api/account/restore',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/json','X-Resell-Pick-Restore':restore},body:JSON.stringify({restore_token:restore}),signal:controller.signal});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}if(!r.ok){const err=new Error(d.error||'로그인 상태를 복원하지 못했습니다.');err.status=r.status;err.code=d.code||'';throw err}await saveAuthBundle(d);return d}finally{clearTimeout(timer)}}
+function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.11.3',savedAt:new Date().toISOString(),storage}}
 async function accountRequest(url,options={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{
@@ -1367,7 +1345,7 @@ async function accountRequest(url,options={}){
    else if(!message)message='로그인 요청을 처리하지 못했습니다.';
    const err=new Error(message);err.status=r.status;err.code=d.code||'';throw err;
   }
-  if(d?.auth_token)saveAuthToken(d.auth_token,true);if(d?.restore_token)saveRestoreToken(d.restore_token);if(d?.authenticated||d?.user||d?.ok)markAuthActivity();
+  if(d?.auth_token||d?.restore_token)await saveAuthBundle(d);
   return d;
  }catch(e){
   if(e?.name==='AbortError')throw new Error('로그인 서버 응답이 늦습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
@@ -1418,8 +1396,8 @@ async function submitAccount(){
   btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');
   const payload={email,identifier:email,password,display_name,terms_agreed,privacy_agreed,auto_login};
   const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify(payload)});
-  if(accountMode==='login'&&d.server_version!=='6.11.2')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');
-  if(d.auth_token)saveAuthToken(d.auth_token,true);if(d.restore_token)saveRestoreToken(d.restore_token);
+  if(accountMode==='login'&&d.server_version&&d.server_version!=='6.11.3')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');
+  if(d.auth_token||d.restore_token)await saveAuthBundle(d);
   if(accountMode==='login')saveLoginPreferences(email);
   const loggedIn=await refreshAccountUI(d);
   if(!loggedIn&&!d.user)throw new Error('로그인 정보를 불러오지 못했습니다. 다시 시도해 주세요.');
@@ -1449,45 +1427,33 @@ function applyAccountState(d={}){
  }
  return on;
 }
-async function restoreAccountSession(){
- if(ACCOUNT_RESTORE_PROMISE)return ACCOUNT_RESTORE_PROMISE;
- ACCOUNT_RESTORE_PROMISE=(async()=>{
-  await hydratePersistentAuth();const restore=authRestoreToken();if(!restore)return null;
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
-  try{
-   const r=await fetch('/api/account/restore',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/json','X-Resell-Pick-Restore':restore},body:JSON.stringify({restore_token:restore}),signal:controller.signal});
-   const d=await r.json().catch(()=>({}));
-   if(!r.ok){const e=new Error(d.error||'로그인 상태를 복원하지 못했습니다.');e.status=r.status;e.code=d.code||'';throw e}
-   if(d.auth_token)saveAuthToken(d.auth_token,true);if(d.restore_token)saveRestoreToken(d.restore_token);markAuthActivity();return d;
-  }finally{clearTimeout(timer)}
- })().finally(()=>{ACCOUNT_RESTORE_PROMISE=null});
- return ACCOUNT_RESTORE_PROMISE;
-}
 async function refreshAccountUI(loginResult=null){
  if(!loginResult&&ACCOUNT_REFRESH_PROMISE)return ACCOUNT_REFRESH_PROMISE;
  const run=async()=>{
-  await hydratePersistentAuth();
-  if(loginResult?.user)applyAccountState({authenticated:true,...loginResult});
-  const requestMe=()=>{const token=loginResult?.auth_token||authToken();return token?accountRequest('/api/account/me',{method:'POST',body:JSON.stringify({auth_token:token})}):accountRequest('/api/account/me?ts='+Date.now())};
+  await hydrateAuthStorage();
+  if(loginResult?.user){await saveAuthBundle(loginResult);applyAccountState({authenticated:true,...loginResult})}
+  const token=loginResult?.auth_token||authToken();
+  const requestMe=()=>token?accountRequest('/api/account/me',{method:'POST',body:JSON.stringify({auth_token:token})}):accountRequest('/api/account/me?ts='+Date.now());
   try{
    let d;
    try{d=await requestMe()}
    catch(firstError){
     if(firstError?.status===401){
-     try{d=await restoreAccountSession()}catch(restoreError){
-      if(restoreError?.status===401){await clearAuthToken(true);CURRENT_ACCOUNT_USER=null;applyAuthenticationGate(false,'1시간 동안 접속하지 않아 로그인이 만료되었습니다. 다시 로그인해 주세요.');return false}
-      throw restoreError
+     try{const restored=await restoreSessionWithDeviceToken();if(restored?.authenticated){d=await accountRequest('/api/account/me',{method:'POST',body:JSON.stringify({auth_token:restored.auth_token})})}else throw firstError}
+     catch(restoreError){
+      if(token){await new Promise(r=>setTimeout(r,500));try{d=await requestMe()}catch(_){throw restoreError}}
+      else throw restoreError
      }
     }else throw firstError;
    }
-   if(d?.authenticated){if(d.auth_token)saveAuthToken(d.auth_token,true);if(d.restore_token)saveRestoreToken(d.restore_token);markAuthActivity();return applyAccountState(d)}
+   if(d?.authenticated){await saveAuthBundle(d);touchAuthActivity(true);return applyAccountState(d)}
    if(loginResult?.user)return true;
    return false;
   }catch(e){
-   if(loginResult?.user||CURRENT_ACCOUNT_USER||authToken()||authRestoreToken()){
-    applyAuthenticationGate(true);return true;
-   }
-   CURRENT_ACCOUNT_USER=null;applyAuthenticationGate(false,'로그인 상태를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');document.querySelectorAll('.admin-console').forEach(el=>el.classList.remove('show'));const ac=$('adminConsole');if(ac)ac.removeAttribute('open');return false;
+   const definitelyExpired=e?.status===401&&['restore_expired','restore_invalid','login_required'].includes(e?.code||'')&&!deviceSessionWithinHour();
+   if(definitelyExpired||(!authToken()&&!restoreToken())){await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAuthenticationGate(false,'1시간 동안 접속하지 않아 로그아웃되었습니다. 다시 로그인해 주세요.');document.querySelectorAll('.admin-console').forEach(el=>el.classList.remove('show'));const ac=$('adminConsole');if(ac)ac.removeAttribute('open');return false}
+   if(loginResult?.user||CURRENT_ACCOUNT_USER||authToken()||restoreToken()){applyAuthenticationGate(!!CURRENT_ACCOUNT_USER,'로그인 상태를 복원하고 있습니다. 잠시 후 다시 시도해 주세요.');return !!CURRENT_ACCOUNT_USER}
+   CURRENT_ACCOUNT_USER=null;applyAuthenticationGate(false,'로그인 상태를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');return false;
   }
  };
  if(loginResult)return run();
@@ -1501,14 +1467,17 @@ async function requestPasswordResetCode(){const email=($('resetEmailInput')?.val
 async function confirmPasswordReset(){const email=($('resetEmailInput')?.value||'').trim(),code=($('resetCodeInput')?.value||'').trim(),new_password=$('resetNewPasswordInput')?.value||'',confirm_password=$('resetNewPasswordConfirmInput')?.value||'';if(new_password!==confirm_password){alert('새 비밀번호가 서로 일치하지 않습니다.');return}try{await accountRequest('/api/account/reset-password',{method:'POST',body:JSON.stringify({email,code,new_password})});alert('비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해 주세요.');closePasswordResetModal();openAccountModal('login');if($('accountEmailInput'))$('accountEmailInput').value=email}catch(e){alert(e.message)}}
 async function saveToCloud(){try{const d=await accountRequest('/api/cloud/snapshot',{method:'PUT',body:JSON.stringify({payload:collectCloudPayload(),version:cloudSnapshotVersion})});cloudSnapshotVersion=Number(d.version)||cloudSnapshotVersion;$('cloudSyncStatus').textContent='마지막 저장: '+new Date(d.updated_at).toLocaleString('ko-KR');alert('현재 기기의 데이터를 클라우드에 저장했습니다.')}catch(e){alert(e.message)}}
 async function restoreFromCloud(){try{const d=await accountRequest('/api/cloud/snapshot');cloudSnapshotVersion=Number(d.version)||0;if(!d.payload?.storage){alert('클라우드에 저장된 데이터가 없습니다.');return}if(!confirm('현재 기기의 데이터를 클라우드 저장 내용으로 바꾸시겠습니까?'))return;Object.entries(d.payload.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('클라우드 데이터 복원이 완료되었습니다.');location.reload()}catch(e){alert(e.message)}}
-async function logoutAccount(){if(!confirm('로그아웃하시겠습니까? 기기에 저장된 데이터는 그대로 유지됩니다.'))return;try{await accountRequest('/api/account/logout',{method:'POST',body:'{}'})}catch(e){}await clearAuthToken(true);try{localStorage.removeItem(AUTO_LOGIN_PREF_KEY)}catch(e){}if($('autoLoginCheck'))$('autoLoginCheck').checked=false;await refreshAccountUI()}
+async function logoutAccount(){if(!confirm('로그아웃하시겠습니까? 기기에 저장된 데이터는 그대로 유지됩니다.'))return;try{await accountRequest('/api/account/logout',{method:'POST',body:'{}'})}catch(e){}await clearAuthToken();try{localStorage.removeItem(AUTO_LOGIN_PREF_KEY)}catch(e){}if($('autoLoginCheck'))$('autoLoginCheck').checked=false;await refreshAccountUI()}
 function rearCameraIsOpen(){return rearCameraHistoryActive||!!$('rearCameraModal')?.classList.contains('show')}
 let ACCOUNT_STARTUP_RESTORED=false;
-async function restoreAccountOnStartup(){restoreLoginPreferences();await hydratePersistentAuth();const on=await refreshAccountUI();if(on&&!ACCOUNT_STARTUP_RESTORED){ACCOUNT_STARTUP_RESTORED=true;moveToMainAfterLogin();setTimeout(()=>{scheduleAutoSourcingMemo('general');scheduleAutoSourcingMemo('resell')},180)}}
+async function restoreAccountOnStartup(){restoreLoginPreferences();await hydrateAuthStorage();const on=await refreshAccountUI();if(on&&!ACCOUNT_STARTUP_RESTORED){ACCOUNT_STARTUP_RESTORED=true;moveToMainAfterLogin();setTimeout(()=>{scheduleAutoSourcingMemo('general');scheduleAutoSourcingMemo('resell')},180)}}
 window.addEventListener('DOMContentLoaded',restoreAccountOnStartup);
-window.addEventListener('pageshow',async()=>{if(!rearCameraIsOpen()){await hydratePersistentAuth();refreshAccountUI()}});
-setInterval(()=>{if(!document.hidden&&!rearCameraIsOpen())refreshAccountUI()},300000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!rearCameraIsOpen())setTimeout(async()=>{await hydratePersistentAuth();refreshAccountUI()},500)});
+window.addEventListener('pageshow',()=>{if(!rearCameraIsOpen())setTimeout(()=>refreshAccountUI(),250)});
+async function authHeartbeat(){if(document.hidden||rearCameraIsOpen()||!CURRENT_ACCOUNT_USER)return;try{const d=await accountRequest('/api/account/heartbeat',{method:'POST',body:'{}'});if(d?.auth_token||d?.restore_token)await saveAuthBundle(d)}catch(e){if(e?.status!==401)return;try{await refreshAccountUI()}catch(_){}}}
+setInterval(authHeartbeat,240000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!rearCameraIsOpen()){touchAuthActivity(true);setTimeout(()=>refreshAccountUI(),400)}});
+['pointerdown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(CURRENT_ACCOUNT_USER)touchAuthActivity(false)},{passive:true}));
+window.addEventListener('pagehide',()=>{if(CURRENT_ACCOUNT_USER){touchAuthActivity(true);try{fetch('/api/account/heartbeat',{method:'POST',credentials:'include',keepalive:true,headers:authHeaders({'Content-Type':'application/json'}),body:'{}'})}catch(e){}}});
 
 async function changePasswordAccount(){const old_password=prompt('현재 비밀번호를 입력하세요.');if(old_password===null)return;const new_password=prompt('새 비밀번호를 8자 이상 입력하세요.');if(new_password===null)return;try{await accountRequest('/api/account/change-password',{method:'POST',body:JSON.stringify({old_password,new_password})});alert('비밀번호가 변경되었습니다.')}catch(e){alert(e.message)}}
 async function deleteAccountPermanently(){if(!confirm('회원정보와 클라우드 데이터를 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.'))return;const password=prompt('확인을 위해 비밀번호를 입력하세요.');if(password===null)return;try{await accountRequest('/api/account',{method:'DELETE',body:JSON.stringify({password})});alert('회원 탈퇴가 완료되었습니다.');location.reload()}catch(e){alert(e.message)}}
@@ -1561,7 +1530,7 @@ async function loadAdminAudit(){try{const d=await accountRequest('/api/admin/aud
 
 
 
-// v6.11.2: 실제 메뉴 높이 측정 + 모바일 터치 이벤트 직접 처리
+// v6.11.1: 실제 메뉴 높이 측정 + 모바일 터치 이벤트 직접 처리
 function syncBottomNavSpace(){
  const nav=$('bottomNav')||document.querySelector('.sticky');if(!nav)return;
  const height=Math.max(78,Math.ceil(nav.getBoundingClientRect().height));
@@ -1582,4 +1551,4 @@ if(window.visualViewport){window.visualViewport.addEventListener('resize',syncBo
 
 
 loadServiceNotices();
-</script><div class="account-modal" id="passwordResetModal" aria-hidden="true" onclick="if(event.target===this)closePasswordResetModal()"><div class="account-sheet"><div class="section-head"><h2>비밀번호 찾기</h2><button class="secondary compact" onclick="closePasswordResetModal()">닫기</button></div><div class="usage-help box"><strong>안내:</strong> 가입한 이메일로 6자리 인증번호를 보내드립니다. 인증번호는 10분 동안 유효합니다.</div><div class="field"><label>가입 이메일</label><input id="resetEmailInput" type="email" autocomplete="email" placeholder="seller@example.com"></div><button class="secondary" onclick="requestPasswordResetCode()" style="width:100%">인증번호 받기</button><div class="field" style="margin-top:10px"><label>이메일 인증번호</label><input id="resetCodeInput" inputmode="numeric" maxlength="6" placeholder="6자리 숫자"></div><div class="field"><label>새 비밀번호</label><input id="resetNewPasswordInput" type="password" autocomplete="new-password" placeholder="영문·숫자 포함 10자 이상"></div><div class="field"><label>새 비밀번호 확인</label><input id="resetNewPasswordConfirmInput" type="password" autocomplete="new-password" placeholder="한 번 더 입력"></div><button class="primary" onclick="confirmPasswordReset()" style="width:100%;margin-top:8px">새 비밀번호로 변경</button></div></div><div class="legal-modal" id="legalModal" aria-hidden="true" onclick="if(event.target===this)closeLegal()"><div class="legal-sheet"><h2 id="legalTitle">서비스 안내</h2><div id="legalBody"></div><div class="legal-close"><button class="primary" style="width:100%" onclick="closeLegal()">확인</button></div></div></div><div class="account-modal" id="accountModal" aria-hidden="true" onclick="if(event.target===this)closeAccountModal()"><div class="account-sheet"><div class="section-head"><h2 id="accountModalTitle">계정 만들기</h2><button class="secondary compact" onclick="closeAccountModal()">닫기</button></div><div class="account-tabs"><button id="accountTabRegister" class="secondary active" onclick="switchAccountMode('register')">회원가입</button><button id="accountTabLogin" class="secondary" onclick="switchAccountMode('login')">로그인</button></div><div class="field" id="accountNameWrap"><label>이름 또는 상호</label><input id="accountNameInput" autocomplete="name" placeholder="예: 올데이픽"></div><div class="field"><label id="accountIdentifierLabel">이메일</label><input id="accountEmailInput" type="email" autocomplete="email" placeholder="seller@example.com"></div><div class="field"><label>비밀번호</label><div class="password-wrap"><input id="accountPasswordInput" type="password" autocomplete="current-password" placeholder="영문·숫자 포함 10자 이상" onkeydown="if(event.key==='Enter')submitAccount()"><button class="password-toggle" id="accountPasswordToggle" type="button" onclick="toggleAccountPassword()" aria-label="비밀번호 보기" title="비밀번호 보기">👁️</button></div></div><div class="login-options" id="accountLoginOptions" style="display:none"><label class="login-check"><input id="rememberLoginId" type="checkbox"><span>아이디 기억</span></label><label class="login-check"><input id="autoLoginCheck" type="checkbox"><span>자동 로그인</span></label></div><div class="auto-login-hint" id="autoLoginHint" style="display:none">자동 로그인 선택 여부와 관계없이 웹이나 홈 화면 앱을 닫았다 다시 열어도 마지막 접속 후 1시간 동안 로그인 상태가 유지됩니다. 1시간 미접속 시 자동 로그아웃됩니다.</div><div id="accountConsentWrap" class="usage-help box" style="margin-top:10px"><label style="display:flex;gap:8px;align-items:flex-start;font-weight:800"><input id="accountTermsAgree" type="checkbox" style="width:auto;margin-top:3px"> <span><button type="button" class="text-button" onclick="openLegal('terms')">이용약관</button>에 동의합니다. (필수)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-weight:800;margin-top:8px"><input id="accountPrivacyAgree" type="checkbox" style="width:auto;margin-top:3px"> <span><button type="button" class="text-button" onclick="openLegal('privacy')">개인정보 처리방침</button>에 동의합니다. (필수)</span></label></div><div class="account-form-message" id="accountFormMessage" role="alert" aria-live="polite"></div><button class="primary" id="accountSubmitBtn" onclick="submitAccount()" style="width:100%;margin-top:8px">계정 만들기</button><button class="text-button" id="forgotPasswordBtn" onclick="openPasswordResetModal()" style="display:none;width:100%;margin-top:8px">비밀번호를 잊으셨나요?</button><div class="tiny" style="margin-top:10px">아이디 기억은 아이디만 저장하며 비밀번호는 저장하지 않습니다. 앱을 닫아도 마지막 접속 후 1시간 동안 로그인 상태가 유지됩니다.</div></div></div></body></html>
+</script><div class="account-modal" id="passwordResetModal" aria-hidden="true" onclick="if(event.target===this)closePasswordResetModal()"><div class="account-sheet"><div class="section-head"><h2>비밀번호 찾기</h2><button class="secondary compact" onclick="closePasswordResetModal()">닫기</button></div><div class="usage-help box"><strong>안내:</strong> 가입한 이메일로 6자리 인증번호를 보내드립니다. 인증번호는 10분 동안 유효합니다.</div><div class="field"><label>가입 이메일</label><input id="resetEmailInput" type="email" autocomplete="email" placeholder="seller@example.com"></div><button class="secondary" onclick="requestPasswordResetCode()" style="width:100%">인증번호 받기</button><div class="field" style="margin-top:10px"><label>이메일 인증번호</label><input id="resetCodeInput" inputmode="numeric" maxlength="6" placeholder="6자리 숫자"></div><div class="field"><label>새 비밀번호</label><input id="resetNewPasswordInput" type="password" autocomplete="new-password" placeholder="영문·숫자 포함 10자 이상"></div><div class="field"><label>새 비밀번호 확인</label><input id="resetNewPasswordConfirmInput" type="password" autocomplete="new-password" placeholder="한 번 더 입력"></div><button class="primary" onclick="confirmPasswordReset()" style="width:100%;margin-top:8px">새 비밀번호로 변경</button></div></div><div class="legal-modal" id="legalModal" aria-hidden="true" onclick="if(event.target===this)closeLegal()"><div class="legal-sheet"><h2 id="legalTitle">서비스 안내</h2><div id="legalBody"></div><div class="legal-close"><button class="primary" style="width:100%" onclick="closeLegal()">확인</button></div></div></div><div class="account-modal" id="accountModal" aria-hidden="true" onclick="if(event.target===this)closeAccountModal()"><div class="account-sheet"><div class="section-head"><h2 id="accountModalTitle">계정 만들기</h2><button class="secondary compact" onclick="closeAccountModal()">닫기</button></div><div class="account-tabs"><button id="accountTabRegister" class="secondary active" onclick="switchAccountMode('register')">회원가입</button><button id="accountTabLogin" class="secondary" onclick="switchAccountMode('login')">로그인</button></div><div class="field" id="accountNameWrap"><label>이름 또는 상호</label><input id="accountNameInput" autocomplete="name" placeholder="예: 올데이픽"></div><div class="field"><label id="accountIdentifierLabel">이메일</label><input id="accountEmailInput" type="email" autocomplete="email" placeholder="seller@example.com"></div><div class="field"><label>비밀번호</label><div class="password-wrap"><input id="accountPasswordInput" type="password" autocomplete="current-password" placeholder="영문·숫자 포함 10자 이상" onkeydown="if(event.key==='Enter')submitAccount()"><button class="password-toggle" id="accountPasswordToggle" type="button" onclick="toggleAccountPassword()" aria-label="비밀번호 보기" title="비밀번호 보기">👁️</button></div></div><div class="login-options" id="accountLoginOptions" style="display:none"><label class="login-check"><input id="rememberLoginId" type="checkbox"><span>아이디 기억</span></label><label class="login-check"><input id="autoLoginCheck" type="checkbox"><span>자동 로그인</span></label></div><div class="auto-login-hint" id="autoLoginHint" style="display:none">자동 로그인 선택 여부와 관계없이 새로고침하거나 뒤로가기로 앱을 종료해도 마지막 활동 후 1시간 동안 로그인 상태가 유지됩니다. 1시간 미접속 시 자동 로그아웃됩니다.</div><div id="accountConsentWrap" class="usage-help box" style="margin-top:10px"><label style="display:flex;gap:8px;align-items:flex-start;font-weight:800"><input id="accountTermsAgree" type="checkbox" style="width:auto;margin-top:3px"> <span><button type="button" class="text-button" onclick="openLegal('terms')">이용약관</button>에 동의합니다. (필수)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-weight:800;margin-top:8px"><input id="accountPrivacyAgree" type="checkbox" style="width:auto;margin-top:3px"> <span><button type="button" class="text-button" onclick="openLegal('privacy')">개인정보 처리방침</button>에 동의합니다. (필수)</span></label></div><div class="account-form-message" id="accountFormMessage" role="alert" aria-live="polite"></div><button class="primary" id="accountSubmitBtn" onclick="submitAccount()" style="width:100%;margin-top:8px">계정 만들기</button><button class="text-button" id="forgotPasswordBtn" onclick="openPasswordResetModal()" style="display:none;width:100%;margin-top:8px">비밀번호를 잊으셨나요?</button><div class="tiny" style="margin-top:10px">아이디 기억은 아이디만 저장하며 비밀번호는 저장하지 않습니다. 앱을 닫아도 마지막 접속 후 1시간 동안 로그인 상태가 유지됩니다.</div></div></div></body></html>

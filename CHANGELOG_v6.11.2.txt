@@ -1,4 +1,4 @@
-리셀 PICK v6.11.2
+리셀 PICK v6.11.3
 
 - 뒤로가기로 웹 종료 후 1시간 로그인 자동 복원
 - localStorage + IndexedDB 인증정보 이중 저장
