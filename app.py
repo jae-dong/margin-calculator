@@ -499,11 +499,11 @@ def require_member_for_app_api():
 @app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
     u=_current_user()
-    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.10.1'),401
+    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.10.2'),401
     sid=str(u.get('auth_session_id') or session.get('auth_session_id') or '')
     auto_login=bool(u.get('auto_login') or session.get('auto_login'))
     token=_issue_auth_token(u['id'],u.get('auth_version') or session.get('auth_version') or 1,sid,auto_login)
-    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.10.1','auth_token':token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
+    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.10.2','auth_token':token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
     return _auth_json_response(payload,token=token,persistent=auto_login)
 
 @app.post('/api/account/register')
@@ -535,7 +535,7 @@ def account_register():
         auto_login=False;sid=_create_auth_session(uid,1,auto_login)
         session.clear();session.permanent=False;session['user_id']=uid;session['auth_version']=1;session['auth_session_id']=sid;session['auto_login']=False
         user=_current_user();token=_issue_auth_token(uid,1,sid,False)
-        return _auth_json_response({'ok':True,'user':user,'auth_token':token,'verification_required':bool(code),'server_version':'6.10.1','auto_login':False,'idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=False)
+        return _auth_json_response({'ok':True,'user':user,'auth_token':token,'verification_required':bool(code),'server_version':'6.10.2','auto_login':False,'idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=False)
     except IntegrityError:return jsonify(error='이미 가입된 이메일입니다. Gmail의 점(.) 또는 +별칭을 바꾼 주소도 같은 계정으로 처리됩니다.'),409
 
 @app.post('/api/account/consents')
@@ -635,7 +635,7 @@ def account_login():
         user['auto_login']=auto_login;user['auth_session_id']=sid
         token=_issue_auth_token(row['id'],auth_version,sid,auto_login)
         return _auth_json_response({
-            'ok':True,'user':user,'auth_token':token,'server_version':'6.10.1','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
+            'ok':True,'user':user,'auth_token':token,'server_version':'6.10.2','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
         },token=token,persistent=auto_login)
     except Exception:
@@ -647,10 +647,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.10.1',idle_timeout_seconds=AUTH_IDLE_SECONDS)
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.10.2',idle_timeout_seconds=AUTH_IDLE_SECONDS)
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.10.1'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.10.2'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1833,10 +1833,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.10.1',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.10.2',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.10.1',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.10.2',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
