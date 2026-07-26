@@ -311,7 +311,7 @@ def _load_auth_user(uid,expected_auth=None):
     if not row or row.get('account_status')!='active':return None
     current_auth=int(row.get('auth_version') or 1)
     if expected_auth is not None and int(expected_auth)!=current_auth:return None
-    row['is_admin']=row.get('role')=='admin';row['email_verified']=bool(row.get('email_verified'))
+    row['is_admin']=row.get('role')=='admin';row['email_verified']=bool(row.get('email_verified'));row['analysis_unlimited']=bool(row['is_admin'])
     expires=row.get('plan_expires_at')
     if expires:
         try:
@@ -374,7 +374,7 @@ def _consent_status(uid):
 
 def _user_json(row): return row
 
-def _plan_limit(plan): return {'free':20,'pro':1000,'proplus':3000}.get(plan,20)
+def _plan_limit(plan): return {'free':30,'pro':1000,'proplus':3000}.get(plan,30)
 def _month_key(): return datetime.utcnow().strftime('%Y-%m')
 def _usage_for(uid):
     with ENGINE.connect() as con: row=con.execute(text('SELECT analysis_count FROM monthly_usage WHERE user_id=:u AND month_key=:m'),{'u':uid,'m':_month_key()}).first()
@@ -407,6 +407,9 @@ def _analysis_access():
         return None,None
     if _requires_email_verification() and not u.get('email_verified') and not u.get('is_admin'):
         return None,(jsonify(error='이메일 인증을 완료한 뒤 사진 분석을 이용해 주세요.',email_verification_required=True),403)
+    # 관리자 계정은 로그인 즉시 자동 무제한이며 월 사용량을 차감하지 않습니다.
+    if u.get('is_admin'):
+        return u,None
     ok,used,limit=_reserve_analysis(u['id'],u['plan'])
     if not ok:return None,(jsonify(error=f'이번 달 분석 제공량 {limit:,}회를 모두 사용했습니다.',usage=used,limit=limit),429)
     return u,None
@@ -416,7 +419,7 @@ def _require_user():
 
 @app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
-    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(_plan_limit(u['plan']) if u else 20),consents=(_consent_status(u['id']) if u else None),server_version='6.9.4')
+    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(None if u and u.get('is_admin') else (_plan_limit(u['plan']) if u else 30)),unlimited=bool(u and u.get('is_admin')),consents=(_consent_status(u['id']) if u else None),server_version='6.9.5')
 
 @app.post('/api/account/register')
 def account_register():
@@ -539,7 +542,7 @@ def account_login():
         if not user:raise RuntimeError('authenticated user lookup failed')
         token=_issue_auth_token(row['id'],row.get('auth_version') or 1)
         return _auth_json_response({
-            'ok':True,'user':user,'auth_token':token,'server_version':'6.9.4',
+            'ok':True,'user':user,'auth_token':token,'server_version':'6.9.5',
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
         },token=token)
     except Exception:
@@ -551,10 +554,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.4')
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.5')
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.4'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.5'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1688,10 +1691,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.9.4',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.5',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.9.4',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.5',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
