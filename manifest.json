@@ -3,7 +3,7 @@
   "name": "리셀 PICK - 브랜드 소싱·마진 계산",
   "short_name": "리셀 PICK",
   "description": "브랜드 상품과 리셀 상품의 소싱가·판매가·예상 순이익을 빠르게 분석하는 업무 도구",
-  "start_url": "/?source=pwa&v=6.9.3",
+  "start_url": "/?source=pwa&v=6.9.4",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f3f5f8",

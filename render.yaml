@@ -31,9 +31,9 @@ services:
       - key: COOKIE_SECURE
         value: "1"
       - key: COOKIE_SAMESITE
-        value: "None"
+        value: "Lax"
       - key: COOKIE_PARTITIONED
-        value: "1"
+        value: "0"
       - key: REQUIRE_LOGIN_FOR_AI
         value: "0"
       - key: MAX_CONCURRENT_AI

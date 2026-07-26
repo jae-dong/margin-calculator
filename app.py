@@ -17,10 +17,11 @@ app.config['MAX_CONTENT_LENGTH']=24*1024*1024
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY') or 'CHANGE-ME-RESELL-PICK-BETA'
 app.config['PERMANENT_SESSION_LIFETIME']=timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY']=True
-app.config['SESSION_COOKIE_SAMESITE']=os.getenv('COOKIE_SAMESITE','None')
+app.config['SESSION_COOKIE_SAMESITE']='Lax'
 app.config['SESSION_COOKIE_SECURE']=os.getenv('COOKIE_SECURE','1')=='1'
-# 설치형 앱·인앱 브라우저에서 쿠키가 차단되는 경우를 줄입니다.
-app.config['SESSION_COOKIE_PARTITIONED']=os.getenv('COOKIE_PARTITIONED','1')=='1'
+# 앱과 API가 같은 주소에서 동작하므로 검증된 Lax 세션 쿠키를 사용합니다.
+# Partitioned 쿠키는 일부 삼성 인터넷·PWA에서 저장 실패를 일으켜 사용하지 않습니다.
+app.config['SESSION_COOKIE_PARTITIONED']=False
 app.config['SESSION_COOKIE_NAME']='resell_pick_session'
 app.config['JSON_AS_ASCII']=False
 
@@ -291,12 +292,15 @@ def _decode_auth_token(token):
         return None,None
 
 def _request_auth_token():
-    # 일부 설치형 브라우저는 Flask 세션 쿠키 갱신을 늦게 반영합니다.
-    # 전용 헤더 → Bearer 헤더 → 보조 HttpOnly 쿠키 순서로 같은 서명 토큰을 확인합니다.
+    # 기존 Flask 세션이 가장 우선이며, 저장소·헤더 제한이 있는 PWA를 위해
+    # 전용 헤더 → Bearer 헤더 → JSON 본문 → 보조 HttpOnly 쿠키 순서로 복구합니다.
     token=str(request.headers.get('X-Resell-Pick-Token') or '').strip()
     if not token:
         raw=str(request.headers.get('Authorization') or '').strip()
         if raw.lower().startswith('bearer '):token=raw[7:].strip()
+    if not token and request.is_json:
+        data=request.get_json(silent=True) or {}
+        token=str(data.get('auth_token') or '').strip()
     if not token:token=str(request.cookies.get(AUTH_COOKIE_NAME) or '').strip()
     return _decode_auth_token(token)
 
@@ -410,9 +414,9 @@ def _analysis_access():
 def _require_user():
     u=_current_user(); return (u,None) if u else (None,(jsonify(error='로그인이 필요합니다.'),401))
 
-@app.get('/api/account/me')
+@app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
-    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(_plan_limit(u['plan']) if u else 20),consents=(_consent_status(u['id']) if u else None),server_version='6.9.3')
+    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(_plan_limit(u['plan']) if u else 20),consents=(_consent_status(u['id']) if u else None),server_version='6.9.4')
 
 @app.post('/api/account/register')
 def account_register():
@@ -535,7 +539,7 @@ def account_login():
         if not user:raise RuntimeError('authenticated user lookup failed')
         token=_issue_auth_token(row['id'],row.get('auth_version') or 1)
         return _auth_json_response({
-            'ok':True,'user':user,'auth_token':token,'server_version':'6.9.3',
+            'ok':True,'user':user,'auth_token':token,'server_version':'6.9.4',
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
         },token=token)
     except Exception:
@@ -547,10 +551,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.3')
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.4')
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.3'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.4'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1684,10 +1688,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.9.3',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.4',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.9.3',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.4',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
