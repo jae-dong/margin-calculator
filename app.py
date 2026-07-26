@@ -273,6 +273,7 @@ _init_db_with_retry()
 def _row_dict(row): return dict(row._mapping) if row else None
 
 AUTH_TOKEN_MAX_AGE=30*24*60*60
+AUTH_COOKIE_NAME='resell_pick_auth'
 
 def _auth_serializer():
     return URLSafeTimedSerializer(app.config['SECRET_KEY'],salt='resell-pick-auth-v1')
@@ -280,10 +281,8 @@ def _auth_serializer():
 def _issue_auth_token(uid,auth_version):
     return _auth_serializer().dumps({'uid':int(uid),'av':int(auth_version or 1)})
 
-def _bearer_auth():
-    raw=str(request.headers.get('Authorization') or '').strip()
-    if not raw.lower().startswith('bearer '):return None,None
-    token=raw[7:].strip()
+def _decode_auth_token(token):
+    token=str(token or '').strip()
     if not token:return None,None
     try:
         payload=_auth_serializer().loads(token,max_age=AUTH_TOKEN_MAX_AGE)
@@ -291,35 +290,70 @@ def _bearer_auth():
     except (BadSignature,SignatureExpired,TypeError,ValueError):
         return None,None
 
-def _current_user():
-    uid=session.get('user_id');expected_auth=session.get('auth_version');via_cookie=bool(uid)
-    if not uid:
-        uid,expected_auth=_bearer_auth();via_cookie=False
+def _request_auth_token():
+    # 일부 설치형 브라우저는 Flask 세션 쿠키 갱신을 늦게 반영합니다.
+    # 전용 헤더 → Bearer 헤더 → 보조 HttpOnly 쿠키 순서로 같은 서명 토큰을 확인합니다.
+    token=str(request.headers.get('X-Resell-Pick-Token') or '').strip()
+    if not token:
+        raw=str(request.headers.get('Authorization') or '').strip()
+        if raw.lower().startswith('bearer '):token=raw[7:].strip()
+    if not token:token=str(request.cookies.get(AUTH_COOKIE_NAME) or '').strip()
+    return _decode_auth_token(token)
+
+def _load_auth_user(uid,expected_auth=None):
     if not uid:return None
     with ENGINE.connect() as con:
-        row=_row_dict(con.execute(text('SELECT id,member_number,email,display_name,plan,created_at,last_login_at,email_verified,auth_version,plan_started_at,plan_expires_at,role,account_status FROM users WHERE id=:id'),{'id':uid}).first())
-    if row:
-        current_auth=int(row.get('auth_version') or 1)
-        if expected_auth is None and via_cookie:session['auth_version']=current_auth
-        elif expected_auth is not None and int(expected_auth)!=current_auth:
-            if via_cookie:session.clear()
-            return None
-        row['is_admin']=row.get('role')=='admin';row['email_verified']=bool(row.get('email_verified'))
-        if row.get('account_status')!='active':
-            session.clear();return None
-        expires=row.get('plan_expires_at')
-        if expires:
-            try:
-                expiry_dt=datetime.fromisoformat(expires.replace('Z','+00:00')).replace(tzinfo=None)
-                row['days_remaining']=max(0,(expiry_dt.date()-datetime.utcnow().date()).days)
-                row['subscription_expired']=expiry_dt<datetime.utcnow()
-            except Exception:
-                row['days_remaining']=None;row['subscription_expired']=False
-        else:
+        row=_row_dict(con.execute(text('SELECT id,member_number,email,display_name,plan,created_at,last_login_at,email_verified,auth_version,plan_started_at,plan_expires_at,role,account_status FROM users WHERE id=:id'),{'id':int(uid)}).first())
+    if not row or row.get('account_status')!='active':return None
+    current_auth=int(row.get('auth_version') or 1)
+    if expected_auth is not None and int(expected_auth)!=current_auth:return None
+    row['is_admin']=row.get('role')=='admin';row['email_verified']=bool(row.get('email_verified'))
+    expires=row.get('plan_expires_at')
+    if expires:
+        try:
+            expiry_dt=datetime.fromisoformat(expires.replace('Z','+00:00')).replace(tzinfo=None)
+            row['days_remaining']=max(0,(expiry_dt.date()-datetime.utcnow().date()).days)
+            row['subscription_expired']=expiry_dt<datetime.utcnow()
+        except Exception:
             row['days_remaining']=None;row['subscription_expired']=False
-        row['billing_plan']=row.get('plan')
-        if row.get('subscription_expired') and row.get('plan') in {'pro','proplus'}:row['plan']='free'
+    else:
+        row['days_remaining']=None;row['subscription_expired']=False
+    row['billing_plan']=row.get('plan')
+    if row.get('subscription_expired') and row.get('plan') in {'pro','proplus'}:row['plan']='free'
     return row
+
+def _current_user():
+    # 1) 기존에 정상 동작하던 Flask 세션을 우선 사용합니다.
+    cookie_uid=session.get('user_id');cookie_auth=session.get('auth_version')
+    if cookie_uid:
+        row=_load_auth_user(cookie_uid,cookie_auth)
+        if row:return row
+        # 오래된 세션 쿠키가 남아 있어도 아래의 유효한 보조 토큰을 막지 않도록 제거합니다.
+        session.clear()
+    # 2) 세션 쿠키 갱신이 지연되는 PWA/인앱 브라우저에서는 서명 토큰으로 복구합니다.
+    token_uid,token_auth=_request_auth_token()
+    row=_load_auth_user(token_uid,token_auth)
+    if not row:return None
+    # 다음 요청부터는 다시 기존 Flask 세션 방식으로 동작하도록 자동 복구합니다.
+    session.clear();session.permanent=True
+    session['user_id']=int(row['id']);session['auth_version']=int(row.get('auth_version') or 1)
+    return row
+
+def _auth_json_response(payload,status=200,token=None):
+    response=jsonify(**payload);response.status_code=status
+    if token:
+        same_site=str(app.config.get('SESSION_COOKIE_SAMESITE') or 'Lax')
+        response.set_cookie(
+            AUTH_COOKIE_NAME,token,max_age=AUTH_TOKEN_MAX_AGE,
+            httponly=True,secure=bool(app.config.get('SESSION_COOKIE_SECURE')),
+            samesite=same_site,path='/'
+        )
+    return response
+
+def _clear_auth_response(payload=None,status=200):
+    response=jsonify(**(payload or {'ok':True}));response.status_code=status
+    response.delete_cookie(AUTH_COOKIE_NAME,path='/')
+    return response
 
 def _consent_status(uid):
     with ENGINE.connect() as con:
@@ -378,7 +412,7 @@ def _require_user():
 
 @app.get('/api/account/me')
 def account_me():
-    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(_plan_limit(u['plan']) if u else 20),consents=(_consent_status(u['id']) if u else None))
+    u=_current_user(); return jsonify(authenticated=bool(u),user=u,usage=(_usage_for(u['id']) if u else 0),limit=(_plan_limit(u['plan']) if u else 20),consents=(_consent_status(u['id']) if u else None),server_version='6.9.3')
 
 @app.post('/api/account/register')
 def account_register():
@@ -458,7 +492,6 @@ def account_login():
 
     configured_admin=bool(row and (_canonical_email(row.get('email')) in _admins() or int(row.get('member_number') or 0)==100000 or row.get('role')=='admin'))
     if configured_admin:
-        # 관리자 권한과 계정 상태만 복구합니다. 비밀번호 실패 잠금은 보안을 위해 그대로 적용합니다.
         try:
             with ENGINE.begin() as con:
                 con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE id=:i"),{'i':row['id']})
@@ -472,16 +505,12 @@ def account_login():
             if locked>now_dt:
                 mins=max(1,int((locked-now_dt).total_seconds()//60)+1)
                 return jsonify(error=f'로그인 시도가 여러 번 실패해 계정이 잠시 보호되고 있습니다. 약 {mins}분 후 다시 시도해 주세요.',code='account_locked'),429
-        except Exception:
-            pass
+        except Exception:pass
 
     valid_password=False
     if row:
-        try:
-            valid_password=check_password_hash(str(row.get('password_hash') or ''),password)
-        except Exception:
-            logging.exception('stored password hash check failed user_id=%s',row.get('id'))
-
+        try:valid_password=check_password_hash(str(row.get('password_hash') or ''),password)
+        except Exception:logging.exception('stored password hash check failed user_id=%s',row.get('id'))
     if not row or not valid_password:
         if row:
             fails=int(row.get('failed_login_count') or 0)+1
@@ -490,38 +519,38 @@ def account_login():
                 con.execute(text('UPDATE users SET failed_login_count=:f,locked_until=:l WHERE id=:i'),{'f':0 if lock_until else fails,'l':lock_until,'i':row['id']})
             remaining=max(0,5-fails)
             msg='관리자 비밀번호가 맞지 않습니다.' if configured_admin else '이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
-            if lock_until: msg+=' 계정 보호를 위해 15분 동안 로그인이 제한됩니다.'
-            elif remaining: msg+=f' {remaining}회 더 실패하면 15분 동안 로그인이 제한됩니다.'
-        else:
-            msg='가입된 계정을 찾지 못했습니다. 이메일 또는 회원번호를 다시 확인해 주세요.'
+            if lock_until:msg+=' 계정 보호를 위해 15분 동안 로그인이 제한됩니다.'
+            elif remaining:msg+=f' {remaining}회 더 실패하면 15분 동안 로그인이 제한됩니다.'
+        else:msg='가입된 계정을 찾지 못했습니다. 이메일 또는 회원번호를 다시 확인해 주세요.'
         return jsonify(error=msg,code='invalid_credentials'),401
-
     if row.get('account_status')=='suspended':
         return jsonify(error='이 계정은 이용이 중지되었습니다. 고객지원에 문의해 주세요.',code='account_suspended'),403
+
     try:
         with ENGINE.begin() as con:
             con.execute(text('UPDATE users SET last_login_at=:n,failed_login_count=0,locked_until=NULL WHERE id=:i'),{'n':now,'i':row['id']})
-        session.clear();session.permanent=True;session['user_id']=int(row['id']);session['auth_version']=int(row.get('auth_version') or 1)
-        user=_current_user()
-        if not user:
-            session.clear()
-            return jsonify(error='로그인 세션을 만들지 못했습니다. 앱을 완전히 종료한 뒤 다시 실행해 주세요.',code='session_failed'),500
-        return jsonify(ok=True,user=user,auth_token=_issue_auth_token(row['id'],row.get('auth_version') or 1),message='관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.')
+        session.clear();session.permanent=True
+        session['user_id']=int(row['id']);session['auth_version']=int(row.get('auth_version') or 1)
+        user=_load_auth_user(row['id'],row.get('auth_version') or 1)
+        if not user:raise RuntimeError('authenticated user lookup failed')
+        token=_issue_auth_token(row['id'],row.get('auth_version') or 1)
+        return _auth_json_response({
+            'ok':True,'user':user,'auth_token':token,'server_version':'6.9.3',
+            'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
+        },token=token)
     except Exception:
         logging.exception('login session creation failed user_id=%s',row.get('id'))
         session.clear()
         return jsonify(error='로그인 처리 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',code='login_server_error'),500
 
-
 @app.get('/api/account/login-status')
 def account_login_status():
     try:
-        with ENGINE.connect() as con:
-            con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.2')
+        with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.9.3')
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.2'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.9.3'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -585,7 +614,8 @@ def account_reset_password():
     session.clear();return jsonify(ok=True)
 
 @app.post('/api/account/logout')
-def account_logout(): session.clear();return jsonify(ok=True)
+def account_logout():
+    session.clear();return _clear_auth_response({'ok':True})
 
 @app.post('/api/account/logout-all')
 def account_logout_all():
@@ -595,7 +625,8 @@ def account_logout_all():
         con.execute(text('UPDATE users SET auth_version=auth_version+1 WHERE id=:i'),{'i':u['id']})
         row=con.execute(text('SELECT auth_version FROM users WHERE id=:i'),{'i':u['id']}).first()
     session.clear();session.permanent=True;session['user_id']=u['id'];session['auth_version']=int(row[0])
-    return jsonify(ok=True,auth_token=_issue_auth_token(u['id'],int(row[0])),message='현재 기기를 제외한 모든 기기에서 로그아웃했습니다.')
+    token=_issue_auth_token(u['id'],int(row[0]))
+    return _auth_json_response({'ok':True,'auth_token':token,'message':'현재 기기를 제외한 모든 기기에서 로그아웃했습니다.'},token=token)
 
 @app.get('/api/account/export')
 def account_export():
@@ -1653,10 +1684,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.9.2',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.3',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.9.2',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.3',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
