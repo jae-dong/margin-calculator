@@ -1,4 +1,4 @@
-import base64,json,os,re,hashlib,time,threading,sqlite3,logging,secrets,smtplib,csv
+import base64,json,os,re,hashlib,time,threading,sqlite3,logging,secrets,smtplib,csv,hmac,urllib.parse,urllib.request
 import json5
 from io import BytesIO, StringIO
 from datetime import datetime, timedelta
@@ -88,7 +88,8 @@ def _client_ip_hash():
     return hashlib.sha256((salt+'|'+raw).encode()).hexdigest()
 
 def _admins():
-    return {x.strip().lower() for x in os.getenv('ADMIN_EMAILS','').split(',') if x.strip()}
+    # Gmail 점(.)/플러스 별칭까지 같은 계정으로 처리해 관리자 권한 누락을 방지한다.
+    return {_canonical_email(x) for x in os.getenv('ADMIN_EMAILS','').split(',') if str(x).strip()}
 
 def _requires_email_verification():
     return os.getenv('REQUIRE_EMAIL_VERIFICATION','0')=='1'
@@ -221,8 +222,11 @@ def _init_db():
         # 회원번호는 가입 후 변경되지 않는 6자리 숫자입니다. 기존 회원은 내부 id를 기준으로 안전하게 소급 부여합니다.
         con.execute(text('UPDATE users SET member_number=100000+id WHERE member_number IS NULL'))
         admin_emails=_admins()
-        for ae in admin_emails:
-            con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE LOWER(email)=:e"),{'e':ae})
+        # 기존 이메일 식별키 형식이 달라도 실제 이메일을 정규화해 관리자 권한을 복구한다.
+        admin_rows=con.execute(text('SELECT id,email,member_number FROM users')).fetchall()
+        for ar in admin_rows:
+            if _canonical_email(ar[1]) in admin_emails or int(ar[2] or 0)==100000:
+                con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE id=:i"),{'i':int(ar[0])})
         # 첫 관리자 계정은 관리 편의를 위해 100000번을 사용합니다. 다른 관리자는 기존 고유번호를 유지합니다.
         first_admin=con.execute(text("SELECT id FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1")).first()
         if first_admin:
@@ -341,11 +345,11 @@ def account_register():
     if len(password)<10 or not re.search(r'[A-Za-z]',password) or not re.search(r'\d',password):return jsonify(error='비밀번호는 영문과 숫자를 포함해 10자 이상으로 입력해 주세요.'),400
     email_key=_canonical_email(email);ip_hash=_client_ip_hash()
     if not _registration_allowed(ip_hash,email_key):return jsonify(error='같은 접속 환경에서 계정을 너무 많이 만들었습니다. 24시간 후 다시 시도하거나 고객지원에 문의해 주세요.'),429
-    now=datetime.utcnow().isoformat(timespec='seconds')+'Z';verified=1 if (email in _admins() or not _requires_email_verification()) else 0
+    now=datetime.utcnow().isoformat(timespec='seconds')+'Z';is_configured_admin=_canonical_email(email) in _admins();verified=1 if (is_configured_admin or not _requires_email_verification()) else 0
     try:
         with ENGINE.begin() as con:
             uid=int(con.execute(text('INSERT INTO users(email,email_key,password_hash,display_name,plan,created_at,last_login_at,email_verified,registration_ip_hash) VALUES(:e,:k,:p,:n,:pl,:c,:l,:v,:ip) RETURNING id'),{'e':email,'k':email_key,'p':generate_password_hash(password),'n':name,'pl':'free','c':now,'l':now,'v':verified,'ip':ip_hash}).first()[0])
-            member_number=100000 if email in _admins() and not con.execute(text('SELECT 1 FROM users WHERE member_number=100000 AND id<>:i'),{'i':uid}).first() else 100000+uid
+            member_number=100000 if is_configured_admin and not con.execute(text('SELECT 1 FROM users WHERE member_number=100000 AND id<>:i'),{'i':uid}).first() else 100000+uid
             con.execute(text('UPDATE users SET member_number=:m WHERE id=:i'),{'m':member_number,'i':uid})
             con.execute(text('INSERT INTO registration_attempts(ip_hash,email_key,created_at) VALUES(:i,:e,:c)'),{'i':ip_hash,'e':email_key,'c':now})
             ua=str(request.headers.get('User-Agent') or '')[:500]
@@ -377,15 +381,37 @@ def account_consents():
 
 @app.post('/api/account/login')
 def account_login():
-    d=request.get_json(silent=True) or {};email=str(d.get('email') or '').strip().lower();password=str(d.get('password') or '')
-    email_key=_canonical_email(email);now_dt=datetime.utcnow();now=now_dt.isoformat(timespec='seconds')+'Z'
-    with ENGINE.connect() as con:row=_row_dict(con.execute(text('SELECT * FROM users WHERE email_key=:e'),{'e':email_key}).first())
+    d=request.get_json(silent=True) or {}
+    identifier=str(d.get('email') or d.get('identifier') or '').strip()
+    password=str(d.get('password') or '')
+    if not identifier or not password:
+        return jsonify(error='이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.',code='missing_credentials'),400
+    now_dt=datetime.utcnow();now=now_dt.isoformat(timespec='seconds')+'Z'
+    is_member_number=bool(re.fullmatch(r'\d{6,10}',identifier))
+    with ENGINE.connect() as con:
+        if is_member_number:
+            row=_row_dict(con.execute(text('SELECT * FROM users WHERE member_number=:m'),{'m':int(identifier)}).first())
+        else:
+            canonical=_canonical_email(identifier)
+            # 최신 email_key, 예전 raw email_key, 실제 이메일을 차례로 확인한다.
+            row=_row_dict(con.execute(text('SELECT * FROM users WHERE email_key=:e OR LOWER(email)=:raw ORDER BY id ASC LIMIT 1'),{'e':canonical,'raw':identifier.lower()}).first())
+            # 구버전에서 Gmail 점(.)·+별칭이 raw email_key로 남은 계정도 로그인되도록 최종 비교한다.
+            if not row and '@' in canonical:
+                domain=canonical.rsplit('@',1)[1]
+                candidates=con.execute(text('SELECT * FROM users WHERE LOWER(email) LIKE :d'),{'d':'%@'+domain}).fetchall()
+                row=next((_row_dict(x) for x in candidates if _canonical_email(x._mapping.get('email'))==canonical),None)
+    # ADMIN_EMAILS 또는 예약 관리자 회원번호 100000이면 손실된 관리자 권한을 즉시 복구한다.
+    configured_admin=bool(row and (_canonical_email(row.get('email')) in _admins() or int(row.get('member_number') or 0)==100000))
+    if configured_admin and (row.get('role')!='admin' or row.get('account_status')!='active'):
+        with ENGINE.begin() as con:
+            con.execute(text("UPDATE users SET role='admin',account_status='active' WHERE id=:i"),{'i':row['id']})
+        row['role']='admin';row['account_status']='active'
     if row and row.get('locked_until'):
         try:
             locked=datetime.fromisoformat(str(row['locked_until']).replace('Z','+00:00')).replace(tzinfo=None)
             if locked>now_dt:
                 mins=max(1,int((locked-now_dt).total_seconds()//60)+1)
-                return jsonify(error=f'로그인 시도가 여러 번 실패해 계정이 잠시 보호되고 있습니다. 약 {mins}분 후 다시 시도해 주세요.'),429
+                return jsonify(error=f'로그인 시도가 여러 번 실패해 계정이 잠시 보호되고 있습니다. 약 {mins}분 후 다시 시도해 주세요.',code='account_locked'),429
         except Exception: pass
     if not row or not check_password_hash(row['password_hash'],password):
         if row:
@@ -393,11 +419,20 @@ def account_login():
             lock_until=(now_dt+timedelta(minutes=15)).isoformat(timespec='seconds')+'Z' if fails>=5 else None
             with ENGINE.begin() as con:
                 con.execute(text('UPDATE users SET failed_login_count=:f,locked_until=:l WHERE id=:i'),{'f':0 if lock_until else fails,'l':lock_until,'i':row['id']})
-        return jsonify(error='이메일 또는 비밀번호가 맞지 않습니다.'),401
-    if row.get('account_status')=='suspended':return jsonify(error='이 계정은 이용이 중지되었습니다. 고객지원에 문의해 주세요.'),403
+            remaining=max(0,5-fails)
+            msg='이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
+            if lock_until: msg+=' 계정 보호를 위해 15분 동안 로그인이 제한됩니다.'
+            elif remaining: msg+=f' {remaining}회 더 실패하면 15분 동안 로그인이 제한됩니다.'
+        else:
+            msg='이메일·회원번호 또는 비밀번호가 맞지 않습니다.'
+        return jsonify(error=msg,code='invalid_credentials'),401
+    if row.get('account_status')=='suspended':
+        return jsonify(error='이 계정은 이용이 중지되었습니다. 고객지원에 문의해 주세요.',code='account_suspended'),403
     with ENGINE.begin() as con:
         con.execute(text('UPDATE users SET last_login_at=:n,failed_login_count=0,locked_until=NULL WHERE id=:i'),{'n':now,'i':row['id']})
-    session.clear();session.permanent=True;session['user_id']=row['id'];session['auth_version']=int(row.get('auth_version') or 1);return jsonify(ok=True,user=_current_user())
+    session.clear();session.permanent=True;session['user_id']=row['id'];session['auth_version']=int(row.get('auth_version') or 1)
+    user=_current_user()
+    return jsonify(ok=True,user=user,message='관리자 계정으로 로그인했습니다.' if user and user.get('is_admin') else '로그인했습니다.')
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -917,7 +952,9 @@ def vision(prompt,tokens=500,multiple=False):
     if cached is not None:return _cached_result(cached),None
     for mime,blob in blobs:
         url=f'data:{mime};base64,{base64.b64encode(blob).decode()}'
-        content.append({'type':'input_image','image_url':url,'detail':'low'})
+        detail=os.getenv('OPENAI_IMAGE_DETAIL','auto').strip().lower()
+        if detail not in {'low','high','auto'}:detail='auto'
+        content.append({'type':'input_image','image_url':url,'detail':detail})
     reserved_user,access_error=_analysis_access()
     if access_error:
         response,status=access_error
@@ -925,10 +962,21 @@ def vision(prompt,tokens=500,multiple=False):
         except Exception:message='분석 제공량을 확인해 주세요.'
         return None,(message,status)
     try:
-        model=os.getenv('OPENAI_VISION_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
-        with _AI_SEMAPHORE:
-            r=cli().responses.create(model=model,input=[{'role':'user','content':content}],max_output_tokens=tokens)
-        data=parse(r.output_text);data['_api_usage']=_api_usage_meta(r,model,'vision');_cache_set(cache_key,data);return data,None
+        configured=os.getenv('OPENAI_VISION_MODEL','').strip()
+        candidates=[x.strip() for x in configured.split(',') if x.strip()] if configured else []
+        candidates += [os.getenv('OPENAI_MODEL','gpt-4.1-mini'),'gpt-4.1-mini']
+        seen=set();last_error=None
+        for model in candidates:
+            if not model or model in seen:continue
+            seen.add(model)
+            try:
+                with _AI_SEMAPHORE:
+                    r=cli().responses.create(model=model,input=[{'role':'user','content':content}],max_output_tokens=tokens)
+                data=parse(r.output_text);data['_api_usage']=_api_usage_meta(r,model,'vision');_cache_set(cache_key,data);return data,None
+            except Exception as exc:
+                last_error=exc
+                logging.warning('vision model failed model=%s error=%s',model,str(exc)[:180])
+        raise last_error or RuntimeError('사진 분석 모델을 사용할 수 없습니다.')
     except Exception as exc:
         if reserved_user:_rollback_analysis(reserved_user['id'])
         return None,_friendly_openai_error(exc)
@@ -1164,7 +1212,7 @@ def analyze_kream_url():
         wanted_size=int(body.get('size') or 0)
         if not re.match(r'^https://(?:www\.)?kream\.co\.kr/products/\d+(?:[/?#].*)?$',url,re.I):
             return jsonify(error='올바른 KREAM 상품 주소가 아닙니다.'),400
-        prompt=f"""오늘 날짜는 2026-07-18이다. 다음 KREAM 상품 URL의 공개적으로 확인 가능한 정보를 웹 검색으로 조사한다.
+        prompt=f"""오늘 날짜는 {datetime.now().astimezone().strftime('%Y-%m-%d')}이다. 다음 KREAM 상품 URL의 공개적으로 확인 가능한 정보를 웹 검색으로 조사한다.
 URL: {url}
 사용자가 관심 있는 사이즈: {wanted_size if wanted_size else '미지정'}
 
@@ -1193,7 +1241,7 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
             raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
         d=parse(response.output_text)
         d['_api_usage']=_api_usage_meta(response,model,'web_search')
-        d['checked_at']='2026-07-18'
+        d['checked_at']=datetime.now().astimezone().strftime('%Y-%m-%d')
         d['source_url']=url
         return jsonify(d)
     except Exception as x:
@@ -1201,139 +1249,179 @@ KREAM 페이지, 검색엔진에 노출된 KREAM 결과, 신뢰할 만한 공개
 
 
 
+def _naver_searchad_ready():
+    return all(os.getenv(k,'').strip() for k in ('NAVER_SEARCHAD_API_KEY','NAVER_SEARCHAD_SECRET_KEY','NAVER_SEARCHAD_CUSTOMER_ID'))
+
+def _naver_count_range(value):
+    """네이버 검색광고의 숫자 또는 '< 10' 값을 (최소, 최대, 정확여부)로 변환한다."""
+    if isinstance(value,(int,float)):
+        n=max(0,int(value));return n,n,True
+    raw=str(value or '').strip().replace(',','')
+    if not raw:return 0,0,False
+    if '<' in raw:
+        m=re.search(r'(\d+)',raw);upper=max(0,int(m.group(1))-1) if m else 9
+        return 0,upper,False
+    try:
+        n=max(0,int(float(raw)));return n,n,True
+    except Exception:
+        return 0,0,False
+
+def _naver_searchad_keyword(keyword):
+    """네이버 검색광고 키워드도구 공식 API에서 월간 검색수와 경쟁도를 가져온다."""
+    if not _naver_searchad_ready():return None
+    path='/keywordstool';method='GET';timestamp=str(int(time.time()*1000))
+    api_key=os.getenv('NAVER_SEARCHAD_API_KEY').strip();secret=os.getenv('NAVER_SEARCHAD_SECRET_KEY').strip();customer=os.getenv('NAVER_SEARCHAD_CUSTOMER_ID').strip()
+    signature=base64.b64encode(hmac.new(secret.encode(),f'{timestamp}.{method}.{path}'.encode(),hashlib.sha256).digest()).decode()
+    hint=re.sub(r'\s+','',str(keyword or '').strip())[:100]
+    if not hint:return None
+    query=urllib.parse.urlencode({'hintKeywords':hint,'showDetail':'1'})
+    req=urllib.request.Request('https://api.searchad.naver.com'+path+'?'+query,headers={
+        'X-Timestamp':timestamp,'X-API-KEY':api_key,'X-Customer':customer,'X-Signature':signature,'Accept':'application/json'
+    },method='GET')
+    with urllib.request.urlopen(req,timeout=8) as response:
+        payload=json.loads(response.read().decode('utf-8'))
+    rows=payload.get('keywordList') or []
+    if not rows:return None
+    norm=lambda v:re.sub(r'\s+','',str(v or '').lower())
+    exact=next((r for r in rows if norm(r.get('relKeyword'))==norm(hint)),rows[0])
+    pc_min,pc_max,pc_exact=_naver_count_range(exact.get('monthlyPcQcCnt'))
+    mo_min,mo_max,mo_exact=_naver_count_range(exact.get('monthlyMobileQcCnt'))
+    related=[]
+    for row in rows:
+        kw=str(row.get('relKeyword') or '').strip()
+        if kw and norm(kw)!=norm(exact.get('relKeyword')) and kw not in related:related.append(kw)
+        if len(related)>=6:break
+    return {
+        'keyword':str(exact.get('relKeyword') or keyword).strip(),
+        'monthly_pc_min':pc_min,'monthly_pc_max':pc_max,
+        'monthly_mobile_min':mo_min,'monthly_mobile_max':mo_max,
+        'monthly_min':pc_min+mo_min,'monthly_max':pc_max+mo_max,
+        'exact':bool(pc_exact and mo_exact),
+        'competition_index':str(exact.get('compIdx') or ''),
+        'average_depth':exact.get('plAvgDepth'),
+        'monthly_pc_clicks':exact.get('monthlyAvePcClkCnt'),
+        'monthly_mobile_clicks':exact.get('monthlyAveMobileClkCnt'),
+        'related_keywords':related,
+        'source':'네이버 검색광고 키워드도구 공식 API',
+        'checked_at':datetime.now().astimezone().strftime('%Y-%m-%d %H:%M')
+    }
+
+def _competition_score_from_naver(value):
+    raw=str(value or '').strip().lower()
+    if raw in {'높음','high'}:return 80
+    if raw in {'중간','보통','medium'}:return 55
+    if raw in {'낮음','low'}:return 30
+    return 0
+
+
 
 @app.post('/api/analyze-market-keyword')
 def analyze_market_keyword():
-    """사진에서 인식한 상품명을 대표 키워드로 정제한 뒤 공개 웹 자료로 수요/경쟁을 평가한다."""
-    try:
-        body=request.get_json(silent=True) or {}
-        raw_keyword=str(body.get('keyword') or '').strip()[:160]
-        if not raw_keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
-        keyword_cache_key='keyword:'+re.sub(r'\s+',' ',raw_keyword.lower()).strip()
-        cached=_cache_get(keyword_cache_key,30*86400)
-        if cached is not None:return jsonify(_cached_result(cached))
-        context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
-        prompt=f"""한국 온라인 쇼핑 상품을 분석한다.
+    """공식 검색량이 연결되면 그 값을 우선하고, 공개 웹 검색은 추세·경쟁 신호 교차검증에만 사용한다."""
+    body=request.get_json(silent=True) or {}
+    raw_keyword=str(body.get('keyword') or '').strip()[:160]
+    if not raw_keyword:return jsonify(error='분석할 키워드가 없습니다.'),400
+    keyword_cache_key='keyword:v690:'+re.sub(r'\s+',' ',raw_keyword.lower()).strip()
+    cached=_cache_get(keyword_cache_key,3*86400)
+    if cached is not None:return jsonify(_cached_result(cached))
+    context={k:body.get(k) for k in ('brand','product_name','category','sale_price','cost_price','margin','roi')}
+    official=None;official_error=''
+    try:official=_naver_searchad_keyword(raw_keyword)
+    except Exception as exc:
+        official_error=str(exc)[:180]
+        logging.warning('naver searchad keyword lookup failed: %s',official_error)
+    official_note=json.dumps(official,ensure_ascii=False) if official else '공식 검색량 API 미연결 또는 조회 실패'
+    prompt=f"""한국 온라인 쇼핑 상품의 수요와 경쟁을 보수적으로 분석한다.
 
 입력 검색어: {raw_keyword}
 상품정보: {json.dumps(context,ensure_ascii=False)}
+네이버 검색광고 공식 키워드 자료: {official_note}
 
-1단계: 입력값에서 소비자가 실제로 검색할 대표 키워드(main_keyword)를 만든다.
-- 일반상품: 브랜드 + 핵심 상품명 + 핵심 규격까지만 사용한다.
-- 스니커즈: 브랜드 + 모델군/모델번호를 우선한다. 색상·사이즈·내부관리번호·바코드는 대표 키워드에서 제외한다.
-- 광고문구, 수량 1개, 혼합색상, 무료배송 같은 불필요한 단어를 제거한다.
-- related_keywords에는 검색 의도가 분명한 보조 키워드 2~4개만 넣는다.
+규칙:
+1. 소비자가 실제로 검색할 대표 키워드(main_keyword)를 만든다. 일반상품은 브랜드+핵심상품명+규격, 스니커즈는 브랜드+모델번호를 우선한다.
+2. 공개 웹 검색으로 최근 90일 이내의 검색 노출, 리뷰·구매 신호, 가격 경쟁, 품절·재입고 신호를 서로 다른 출처 3곳 이상에서 교차검증한다.
+3. 공식 자료가 제공되면 월간 검색량과 경쟁도는 절대로 임의 수정하지 않는다. 공식 자료가 없으면 월간 검색량·판매자수·상품수를 추측하거나 만들어내지 말고 0으로 둔다.
+4. evidence에는 실제 확인한 출처의 이름과 무엇을 확인했는지 적는다. 확인하지 않은 숫자를 사실처럼 쓰지 않는다.
+5. demand_score와 competition_score는 공식 검색량, 공식 경쟁도, 최근 웹 노출·리뷰·구매·가격 신호를 종합한 0~100 평가 점수이며 절대 검색량 자체가 아니다.
+6. 공개 정보가 충분하지 않으면 confidence를 낮음으로 하고 recommendation은 자료부족 또는 소량 테스트로 둔다.
 
-2단계: main_keyword와 related_keywords를 각각 공개 웹 검색해 한국 온라인 쇼핑의 수요와 경쟁을 교차검증한다.
-- 한 사이트의 결과만으로 결론 내리지 말고 가능하면 서로 다른 공개 출처 3곳 이상을 비교한다.
-- 동일 상품의 중복 페이지, 품절 페이지, 광고성 문서는 경쟁 상품수에서 과대계상하지 않는다.
-- 확인 시점이 오래된 자료는 낮은 가중치를 적용한다.
-우선 확인할 공개 근거:
-- 네이버 검색/쇼핑 결과에 노출된 상품 수 또는 관련 문서
-- 쿠팡·11번가·G마켓 등 공개 검색 결과
-- 검색 트렌드나 키워드 통계를 공개적으로 보여주는 페이지
-- 제조사·브랜드·판매처의 상품 노출 빈도와 리뷰 집중도
-
-유료 회원 전용 데이터나 로그인 뒤 수치를 우회하지 않는다. 정확한 월간 검색량을 확인하지 못하면 search_volume_type을 "추정"으로 하고, 공개 근거에 따른 보수적 범위를 monthly_search_min/monthly_search_max에 넣는다. 공개 수치도 근거도 부족하면 0으로 둔다.
-판매자 수와 상품 수는 실제 확인한 숫자가 있으면 seller_count/product_count에 넣고, 검색결과 수만 확인되면 product_count에 넣는다.
-competition_score는 상품수·판매자수·상위 판매자 집중도·가격 덤핑·브랜드 독점·리뷰 집중도를 반영한 0~100 점수다.
-demand_score는 검색 관심도·최근 노출 증가·구매/리뷰 신호·재구매 가능성을 반영한 0~100 점수다.
-sourcing_score는 수요, 경쟁, 예상 마진/ROI, 가격 안정성, 회전 가능성을 함께 반영한다.
-search_trend는 상승|보합|하락|판단어려움 중 하나로 작성하고 trend_reason에 근거를 설명한다.
-review_signal과 purchase_signal은 리뷰 증가·구매표시·거래 흔적 등 실제 확인 가능한 신호를 구분해 설명한다.
-price_competition은 낮음|보통|높음|판단어려움 중 하나로 작성하고 price_range_note에 가격대와 덤핑 여부를 설명한다.
-confidence_reason에는 출처 수, 수치 확인 여부, 자료 최신성을 근거로 신뢰도를 설명한다.
-evidence에는 출처명 또는 확인 페이지 성격을 포함해 3~7개 적는다. 확인하지 않은 숫자를 사실처럼 만들지 않는다.
-
-설명·마크다운 없이 완전한 JSON 하나만 반환한다:
-{{"main_keyword":"","related_keywords":[],"demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","search_volume_type":"확인값|추정|자료부족","monthly_search_volume":0,"monthly_search_min":0,"monthly_search_max":0,"seller_count":0,"product_count":0,"search_trend":"상승|보합|하락|판단어려움","trend_reason":"","review_signal":"","purchase_signal":"","price_competition":"낮음|보통|높음|판단어려움","price_range_note":"","data_scope":"공개 웹 검색 교차검증","confidence":"높음|보통|낮음","confidence_reason":"","evidence":[""],"cautions":[""]}}"""
-        reserved_user,access_error=_analysis_access()
-        if access_error:return access_error
-        client=cli()
-        response=None
-        last_error=None
-        for tool_type in ('web_search','web_search_preview'):
-            try:
-                model=os.getenv('OPENAI_SEARCH_MODEL',os.getenv('OPENAI_MODEL','gpt-4.1-mini'))
-                with _AI_SEMAPHORE:
-                    response=client.responses.create(
-                        model=model,
-                        tools=[{'type':tool_type}],
-                        input=prompt,
-                        max_output_tokens=1200
-                    )
-                break
-            except Exception as exc:
-                last_error=exc
-        if response is None: raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
+설명·마크다운 없이 JSON 하나만 반환한다:
+{{"main_keyword":"","related_keywords":[],"demand_score":0,"competition_score":0,"sourcing_score":0,"turnover":"빠름|보통|느림|자료부족","recommendation":"적극 소싱|마진 확보 시 소싱|소량 테스트|비추천|자료부족","seller_count":0,"product_count":0,"search_trend":"상승|보합|하락|판단어려움","trend_reason":"","review_signal":"","purchase_signal":"","price_competition":"낮음|보통|높음|판단어려움","price_range_note":"","confidence":"높음|보통|낮음","confidence_reason":"","evidence":[],"cautions":[]}}"""
+    reserved_user,access_error=_analysis_access()
+    if access_error:return access_error
+    response=None;last_error=None;model=''
+    try:
+        search_models=[]
+        for item in (os.getenv('OPENAI_SEARCH_MODEL',''),os.getenv('OPENAI_MODEL','gpt-4.1-mini'),'gpt-4.1-mini'):
+            for candidate in str(item).split(','):
+                candidate=candidate.strip()
+                if candidate and candidate not in search_models:search_models.append(candidate)
+        for model_candidate in search_models:
+            for tool_type in ('web_search','web_search_preview'):
+                try:
+                    model=model_candidate
+                    with _AI_SEMAPHORE:
+                        response=cli().responses.create(model=model,tools=[{'type':tool_type}],input=prompt,max_output_tokens=1300)
+                    break
+                except Exception as exc:last_error=exc
+            if response is not None:break
+        if response is None:raise last_error or RuntimeError('웹 검색 도구를 사용할 수 없습니다.')
         d=parse(response.output_text)
         d['_api_usage']=_api_usage_meta(response,model,'keyword_search')
-        for k in ('demand_score','competition_score','sourcing_score'):
-            try:d[k]=max(0,min(100,int(float(d.get(k) or 0))))
-            except:d[k]=0
-        for k in ('monthly_search_volume','monthly_search_min','monthly_search_max','seller_count','product_count'):
-            try:d[k]=max(0,int(float(d.get(k) or 0)))
-            except:d[k]=0
-        d['main_keyword']=str(d.get('main_keyword') or raw_keyword).strip()[:100]
-        d['keyword']=d['main_keyword']
-        d['related_keywords']=[str(x).strip() for x in (d.get('related_keywords') or []) if str(x).strip()][:4]
-        d['search_volume_estimate']=d.get('monthly_search_volume') or (
-            round((d.get('monthly_search_min',0)+d.get('monthly_search_max',0))/2)
-            if d.get('monthly_search_max',0) else 0
-        )
-        d['exact_search_volume_available']=d.get('search_volume_type')=='확인값' and bool(d.get('monthly_search_volume'))
-        d['data_scope']=d.get('data_scope') or '공개 웹 검색 교차검증'
-        d['checked_at']=datetime.now().astimezone().strftime('%Y-%m-%d %H:%M')
-        d['search_trend']=d.get('search_trend') or '판단어려움'
-        d['trend_reason']=str(d.get('trend_reason') or '공개 자료의 시계열 신호가 충분하지 않습니다.')[:240]
-        d['review_signal']=str(d.get('review_signal') or '확인 가능한 리뷰 신호가 제한적입니다.')[:240]
-        d['purchase_signal']=str(d.get('purchase_signal') or '공개 구매 신호를 보수적으로 반영했습니다.')[:240]
-        d['price_competition']=d.get('price_competition') or '판단어려움'
-        d['price_range_note']=str(d.get('price_range_note') or '공개 가격 자료가 충분하지 않아 직접 시세 확인이 필요합니다.')[:240]
-        d['confidence_reason']=str(d.get('confidence_reason') or '공개 자료의 수치 확인 범위에 따라 신뢰도를 산정했습니다.')[:240]
-        # 공개 검색에서 절대값을 찾지 못해도 화면 전체가 '자료부족'이 되지 않도록
-        # 대표 키워드와 확인 가능한 노출 신호를 바탕으로 보수적인 AI 추정 범위를 제공한다.
-        if not d.get('monthly_search_volume') and not d.get('monthly_search_max'):
-            ds=max(1,int(d.get('demand_score') or 45))
-            base=max(100,ds*120)
-            d['monthly_search_min']=int(base*0.55)
-            d['monthly_search_max']=int(base*1.45)
-            d['search_volume_type']='AI 추정'
-            d['search_volume_estimate']=round((d['monthly_search_min']+d['monthly_search_max'])/2)
-            d['exact_search_volume_available']=False
-            d.setdefault('cautions',[]).append('월간 검색량은 공식 절대 검색량이 아니라 공개 노출 신호 기반 AI 추정 범위입니다.')
-        if not d.get('product_count') and not d.get('seller_count'):
-            cs=max(1,int(d.get('competition_score') or 50))
-            d['product_count']=max(20,cs*35)
-            d.setdefault('cautions',[]).append('상품수는 공개 검색 노출 신호를 바탕으로 한 보수적 추정치입니다.')
-        if not d.get('turnover') or d.get('turnover')=='자료부족':
-            ds=int(d.get('demand_score') or 0)
-            d['turnover']='빠름' if ds>=70 else ('보통' if ds>=40 else '느림')
-        if not d.get('recommendation') or d.get('recommendation')=='자료부족':
-            ss=int(d.get('sourcing_score') or 0)
-            d['recommendation']='적극 소싱' if ss>=75 else ('마진 확보 시 소싱' if ss>=55 else ('소량 테스트' if ss>=35 else '비추천'))
-        _cache_set(keyword_cache_key,d)
-        return jsonify(d)
-    except Exception as x:
-        # 웹검색 도구 자체가 일시 실패해도 대표 키워드 기준의 보수적 분석값을 반환한다.
-        kw=raw_keyword
-        specificity=min(20,max(0,len(re.findall(r'[A-Za-z0-9가-힣]+',kw))*4))
-        demand=50+specificity//2
-        competition=55+specificity//3
-        sourcing=max(20,min(80,55+(demand-competition)//2))
-        mid=max(500,demand*120)
-        return jsonify({
-            'main_keyword':kw,'keyword':kw,'related_keywords':[],
-            'demand_score':demand,'competition_score':competition,'sourcing_score':sourcing,
-            'turnover':'보통' if demand>=40 else '느림',
-            'recommendation':'마진 확보 시 소싱' if sourcing>=50 else '소량 테스트',
-            'search_volume_type':'AI 추정','monthly_search_volume':0,
-            'monthly_search_min':int(mid*.55),'monthly_search_max':int(mid*1.45),
-            'search_volume_estimate':mid,'seller_count':0,'product_count':competition*35,
-            'data_scope':'대표 키워드 기반 보수적 추정','confidence':'낮음','confidence_reason':'공개 검색 연결 실패로 교차검증하지 못했습니다.','checked_at':datetime.now().astimezone().strftime('%Y-%m-%d %H:%M'),'search_trend':'판단어려움','trend_reason':'시계열 자료를 확인하지 못했습니다.','review_signal':'공개 리뷰 신호를 확인하지 못했습니다.','purchase_signal':'공개 구매 신호를 확인하지 못했습니다.','price_competition':'판단어려움','price_range_note':'가격 경쟁 자료를 직접 확인해 주세요.','exact_search_volume_available':False,
-            'evidence':['사진에서 인식한 대표 키워드의 구체성과 상품 카테고리를 반영했습니다.'],
-            'cautions':['공개 검색 연결이 일시 실패해 공식 절대 검색량이 아닌 추정 범위를 표시합니다.','키워드 시장 분석 오류: '+str(x)[:120]]
-        })
+    except Exception as exc:
+        if reserved_user:_rollback_analysis(reserved_user['id'])
+        d={'main_keyword':raw_keyword,'related_keywords':[],'demand_score':0,'competition_score':0,'sourcing_score':0,
+           'turnover':'자료부족','recommendation':'자료부족','seller_count':0,'product_count':0,'search_trend':'판단어려움',
+           'trend_reason':'공개 웹 교차검증에 일시적으로 연결하지 못했습니다.','review_signal':'','purchase_signal':'',
+           'price_competition':'판단어려움','price_range_note':'','confidence':'낮음',
+           'confidence_reason':'공개 웹 자료를 확인하지 못해 공식 키워드 자료만 반영했습니다.' if official else '공식 데이터와 공개 웹 자료를 모두 확인하지 못했습니다.',
+           'evidence':[],'cautions':['공개 웹 검색 연결 오류: '+str(exc)[:120]]}
+    for k in ('demand_score','competition_score','sourcing_score'):
+        try:d[k]=max(0,min(100,int(float(d.get(k) or 0))))
+        except:d[k]=0
+    for k in ('seller_count','product_count'):
+        try:d[k]=max(0,int(float(d.get(k) or 0)))
+        except:d[k]=0
+    d['main_keyword']=str(d.get('main_keyword') or raw_keyword).strip()[:100]
+    ai_related=[str(x).strip() for x in (d.get('related_keywords') or []) if str(x).strip()]
+    d['keyword']=d['main_keyword'];d['checked_at']=datetime.now().astimezone().strftime('%Y-%m-%d %H:%M')
+    d['official_data_available']=bool(official);d['data_sources']=[]
+    if official:
+        d['monthly_pc_search_min']=official['monthly_pc_min'];d['monthly_pc_search_max']=official['monthly_pc_max']
+        d['monthly_mobile_search_min']=official['monthly_mobile_min'];d['monthly_mobile_search_max']=official['monthly_mobile_max']
+        d['monthly_search_min']=official['monthly_min'];d['monthly_search_max']=official['monthly_max']
+        d['monthly_search_volume']=official['monthly_min'] if official['exact'] else 0
+        d['search_volume_type']='확인값' if official['exact'] else '공식 범위'
+        d['exact_search_volume_available']=bool(official['exact'])
+        d['competition_index']=official['competition_index']
+        d['search_volume_estimate']=official['monthly_min'] if official['exact'] else round((official['monthly_min']+official['monthly_max'])/2)
+        if not d.get('competition_score'):
+            d['competition_score']=_competition_score_from_naver(official['competition_index'])
+        merged=[]
+        for x in official.get('related_keywords',[])+ai_related:
+            if x and x not in merged:merged.append(x)
+        d['related_keywords']=merged[:6]
+        d['official_source']=official['source'];d['data_scope']='네이버 검색광고 공식 검색량 + 공개 웹 교차검증'
+        d['data_sources'].append({'name':official['source'],'type':'공식 월간 검색수·경쟁도','checked_at':official['checked_at']})
+        ev=[str(x) for x in (d.get('evidence') or []) if str(x).strip()]
+        ev.insert(0,f"네이버 검색광고 공식 API: 월간 검색수 {'정확값 '+str(official['monthly_min'])+'회' if official['exact'] else str(official['monthly_min'])+'~'+str(official['monthly_max'])+'회'}, 경쟁도 {official['competition_index'] or '미제공'}")
+        d['evidence']=ev[:8]
+    else:
+        d['monthly_search_volume']=0;d['monthly_search_min']=0;d['monthly_search_max']=0;d['search_volume_estimate']=0
+        d['search_volume_type']='자료부족';d['exact_search_volume_available']=False;d['competition_index']=''
+        d['related_keywords']=ai_related[:4];d['official_source']='';d['data_scope']='공개 웹 교차검증(공식 절대 검색량 미연결)'
+        cautions=[str(x) for x in (d.get('cautions') or []) if str(x).strip()]
+        cautions.insert(0,'네이버 검색광고 공식 API가 연결되지 않아 월간 검색량은 표시하지 않습니다. 추정 숫자를 만들지 않았습니다.')
+        if official_error:cautions.append('공식 키워드 API 조회 오류: '+official_error)
+        d['cautions']=cautions[:8]
+    d['search_trend']=d.get('search_trend') or '판단어려움';d['price_competition']=d.get('price_competition') or '판단어려움'
+    d['confidence']=d.get('confidence') or ('보통' if official else '낮음')
+    if not d.get('confidence_reason'):
+        d['confidence_reason']='공식 월간 검색수와 공개 웹 자료를 함께 확인했습니다.' if official else '공식 절대 검색량이 연결되지 않아 공개 웹 신호만 반영했습니다.'
+    if not d.get('turnover'):d['turnover']='자료부족'
+    if not d.get('recommendation'):d['recommendation']='자료부족'
+    _cache_set(keyword_cache_key,d)
+    return jsonify(d)
 
 
 @app.post('/api/export-excel')
@@ -1476,10 +1564,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.3.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.9.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.3.0',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.9.0',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()

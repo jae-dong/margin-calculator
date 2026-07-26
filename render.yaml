@@ -16,6 +16,12 @@ services:
         value: 3.11.9
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
+      - key: OPENAI_VISION_MODEL
+        value: gpt-5-mini,gpt-4.1-mini
+      - key: OPENAI_SEARCH_MODEL
+        value: gpt-5-mini,gpt-4.1-mini
+      - key: OPENAI_IMAGE_DETAIL
+        value: auto
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
@@ -35,4 +41,10 @@ services:
       - key: ADMIN_EMAILS
         sync: false
       - key: OPENAI_API_KEY
+        sync: false
+      - key: NAVER_SEARCHAD_API_KEY
+        sync: false
+      - key: NAVER_SEARCHAD_SECRET_KEY
+        sync: false
+      - key: NAVER_SEARCHAD_CUSTOMER_ID
         sync: false
