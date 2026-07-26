@@ -199,7 +199,7 @@ body.rear-camera-open .camera-modal{display:flex!important}
 .memo-record-text{white-space:pre-wrap;word-break:break-word;line-height:1.55;margin-top:7px;padding:10px;border-radius:11px;background:#f7f9fc;color:#334155}
 .receipt-source-badge{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;background:#e9f4ff;color:#145b98;font-size:10px;font-weight:900;vertical-align:middle}
 </style></head><body class="auth-locked"><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.11.1</span></header><section class="auth-gate" id="authGate" aria-live="polite">
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.11.4</span></header><section class="auth-gate" id="authGate" aria-live="polite">
 <img class="auth-gate-logo" src="/icon-192.png" alt="리셀 PICK 로고">
 <h2>회원가입 후 이용해 주세요</h2>
 <p>사진 촬영·사진 분석, 상품 검색, 마진 계산, 기록, 장바구니, 통계, 설정 등 리셀 PICK의 모든 기능은 회원가입 또는 로그인 후 이용할 수 있습니다.</p>
@@ -1253,7 +1253,7 @@ function autoAnalyzeCurrentIfNeeded(){
 }
 window.addEventListener('pageshow',autoAnalyzeCurrentIfNeeded);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoAnalyzeCurrentIfNeeded()});
 
-loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').then(reg=>reg.update().catch(()=>{})).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{try{if(sessionStorage.getItem('rpSwReload693')!=='1'){sessionStorage.setItem('rpSwReload693','1');location.reload()}}catch(e){}});}
+loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js?v=6.11.4',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{try{if(sessionStorage.getItem('rpSwReload6114')!=='1'){sessionStorage.setItem('rpSwReload6114','1');location.reload()}}catch(e){}});}
 
 window.addEventListener('pageshow',()=>{
  try{
@@ -1277,7 +1277,7 @@ const ONBOARDING_KEY='resellPickOnboardingDoneV1';
 function showOnboarding(){if(localStorage.getItem(ONBOARDING_KEY)==='1')return;const m=$('onboardingModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
 function closeOnboarding(never=false){const m=$('onboardingModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}if(never)localStorage.setItem(ONBOARDING_KEY,'1')}
 function exportAppBackup(){
- try{const data={app:'리셀 PICK',version:'6.11.3',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
+ try{const data={app:'리셀 PICK',version:'6.11.4',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
 }
 async function restoreAppBackup(event){const f=event.target.files?.[0];event.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(!data?.storage||typeof data.storage!=='object')throw new Error();if(!confirm('현재 기기의 데이터를 백업 파일 내용으로 복원하시겠습니까?'))return;Object.entries(data.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('복원이 완료되었습니다. 화면을 다시 불러옵니다.');location.reload()}catch(e){alert('올바른 리셀 PICK 백업 파일이 아닙니다.')}}
 function clearAllAppData(){if(!confirm('상품 기록·영수증·장바구니·설정 등 내 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'))return;if(!confirm('정말 전체 삭제하시겠습니까? 필요한 데이터는 먼저 백업해 주세요.'))return;localStorage.clear();alert('내 데이터가 모두 삭제되었습니다.');location.reload()}
@@ -1332,7 +1332,7 @@ function storedAuthLastActivity(){try{return Number(localStorage.getItem(AUTH_LA
 function deviceSessionWithinHour(){const last=storedAuthLastActivity();return !!last&&Date.now()-last<AUTH_IDLE_MS}
 async function clearAuthToken(){AUTH_TOKEN_MEMORY='';RESTORE_TOKEN_MEMORY='';try{[AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,RESTORE_TOKEN_KEY,RESTORE_TOKEN_SAVED_AT_KEY,AUTH_LAST_ACTIVITY_KEY].forEach(k=>localStorage.removeItem(k));sessionStorage.removeItem(AUTH_TOKEN_KEY)}catch(e){}await Promise.all([authDbDelete(AUTH_TOKEN_KEY),authDbDelete(RESTORE_TOKEN_KEY),authDbDelete(AUTH_LAST_ACTIVITY_KEY)])}
 async function restoreSessionWithDeviceToken(){await hydrateAuthStorage();const restore=restoreToken();if(!restore||!deviceSessionWithinHour())return null;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{const r=await fetch('/api/account/restore',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/json','X-Resell-Pick-Restore':restore},body:JSON.stringify({restore_token:restore}),signal:controller.signal});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}if(!r.ok){const err=new Error(d.error||'로그인 상태를 복원하지 못했습니다.');err.status=r.status;err.code=d.code||'';throw err}await saveAuthBundle(d);return d}finally{clearTimeout(timer)}}
-function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.11.3',savedAt:new Date().toISOString(),storage}}
+function collectCloudPayload(){const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))storage[k]=localStorage.getItem(k)}return {version:'6.11.4',savedAt:new Date().toISOString(),storage}}
 async function accountRequest(url,options={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{
@@ -1396,7 +1396,7 @@ async function submitAccount(){
   btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');
   const payload={email,identifier:email,password,display_name,terms_agreed,privacy_agreed,auto_login};
   const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify(payload)});
-  if(accountMode==='login'&&d.server_version&&d.server_version!=='6.11.3')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');
+  if(accountMode==='login'&&d.server_version&&d.server_version!=='6.11.4')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');
   if(d.auth_token||d.restore_token)await saveAuthBundle(d);
   if(accountMode==='login')saveLoginPreferences(email);
   const loggedIn=await refreshAccountUI(d);

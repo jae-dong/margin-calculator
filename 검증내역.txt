@@ -1,9 +1,9 @@
-리셀 PICK v6.11.3 검증 내역
+리셀 PICK v6.11.4 검증 내역
 
 - app.py Python 문법 검사 통과
 - index.html 인라인 JavaScript Node.js 문법 검사 통과
 - HTML 중복 id 검사 통과
-- 서버·화면·서비스워커·manifest·version.json 버전 6.11.3 일치 확인
+- 서버·화면·서비스워커·manifest·version.json 버전 6.11.4 일치 확인
 - /api/account/restore 공개 인증 복원 경로 존재 확인
 - 로그인·회원가입·내 계정 응답에 1시간 복원키 포함 확인
 - localStorage + IndexedDB 이중 인증 저장 코드 확인
