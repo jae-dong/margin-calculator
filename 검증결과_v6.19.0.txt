@@ -1,0 +1,15 @@
+리셀 PICK v6.19.0 검증 결과
+
+1. Python 문법 검사: 통과
+2. JavaScript 전체 문법 검사(Node --check): 통과
+3. HTML ID 중복 검사: 중복 없음
+4. manifest.json·version.json JSON 검사: 통과
+5. Android 네이티브 브리지 함수 연결 검사: 통과
+6. /api/mobile-shell-config 정적 구조 검사: 통과
+7. v6.18.0 대비 로그인 유지 핵심 함수 AST 비교: 기능 변경 없음
+8. 화면·서버·서비스워커·manifest·version.json 버전: 6.19.0 통일
+
+주의
+- 현재 실행 환경에는 Flask·Android SDK가 설치되어 있지 않아 Render 실제 서버 기동과 APK/AAB 빌드는 실행하지 못했습니다.
+- 실제 Render 배포 후 /version.json과 /api/mobile-shell-config를 확인하세요.
+- Android Studio에서 실제 휴대폰 카메라·사진첩·다운로드·로그인 유지 검증이 필요합니다.

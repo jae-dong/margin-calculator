@@ -1,0 +1,8 @@
+리셀 PICK v6.19.0
+
+- Android 베타 앱 패키징을 위한 네이티브 브리지 지원
+- Android 앱에서 쿠팡·네이버·KREAM·POIZON·카카오톡 링크를 외부 앱으로 안전하게 열기
+- 엑셀·CSV·JSON 등 Blob 다운로드를 Android 다운로드 폴더에 저장할 수 있도록 연결
+- Android 앱 버전을 오류 신고 정보에 포함
+- Android 앱이 서버 주소·정책 URL·지원 URL을 점검할 수 있는 /api/mobile-shell-config 추가
+- 기존 v6.12.2 기반 DB 단일키 로그인 유지 구조 보존

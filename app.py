@@ -329,8 +329,8 @@ def _init_db():
         con.execute(text('CREATE INDEX IF NOT EXISTS ix_ai_usage_created ON ai_usage_logs(created_at)'))
         con.execute(text('CREATE INDEX IF NOT EXISTS ix_ai_usage_user_created ON ai_usage_logs(user_id,created_at)'))
         defaults={
-          'latest_version':'6.18.0','minimum_version':'6.12.2','update_mode':'optional',
-          'update_message':'14일 베타 진행관리와 출시 준비 점검 기능이 추가되었습니다.',
+          'latest_version':'6.19.0','minimum_version':'6.12.2','update_mode':'optional',
+          'update_message':'Android 베타 앱 패키징과 네이티브 연결 지원이 추가되었습니다.',
           'update_url':'/','beta_program_name':'리셀 PICK 비공개 베타','beta_target_count':'15',
           'release_checklist_json':'{}','release_checklist_note':''
         }
@@ -748,12 +748,12 @@ def require_member_for_app_api():
 @app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
     u=_current_user()
-    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.18.0',code='login_required'),401
+    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.19.0',code='login_required'),401
     auth_version=int(u.get('auth_version') or session.get('auth_version') or 1)
     session.clear();session.permanent=True
     session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=True
     persistent_token=_ensure_persistent_login_token(u['id'],auth_version)
-    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.18.0','persistent_login_token':persistent_token,'auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
+    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.19.0','persistent_login_token':persistent_token,'auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
     return _auth_json_response(payload,persistent=True,persistent_login_token=persistent_token)
 
 @app.post('/api/account/resume-v2')
@@ -773,7 +773,7 @@ def account_resume_v2():
     auth_token=_issue_auth_token(uid,auth_version,sid,False)
     restore_token=_issue_restore_token(uid,auth_version,sid)
     login_resume_token=_issue_login_resume_token(uid,auth_version)
-    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.18.0','auth_token':auth_token,'restore_token':restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
+    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.19.0','auth_token':auth_token,'restore_token':restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
     return _auth_json_response(payload,token=auth_token,persistent=True,device_token=device_token,login_resume_token=login_resume_token)
 
 @app.post('/api/account/heartbeat')
@@ -784,7 +784,7 @@ def account_heartbeat():
     persistent_token=_ensure_persistent_login_token(u['id'],auth_version)
     session.clear();session.permanent=True
     session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=True
-    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.18.0','idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.19.0','idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
 
 @app.post('/api/account/restore')
 def account_restore():
@@ -832,7 +832,7 @@ def account_restore():
     auth_token=_issue_auth_token(uid,auth_version,sid,auto_login)
     new_restore_token=_issue_restore_token(uid,auth_version,sid)
     login_resume_token=_issue_login_resume_token(uid,auth_version)
-    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.18.0','auth_token':auth_token,'restore_token':new_restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
+    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.19.0','auth_token':auth_token,'restore_token':new_restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
     return _auth_json_response(payload,token=auth_token,persistent=True,device_token=device_token,login_resume_token=login_resume_token)
 
 @app.post('/api/account/register')
@@ -864,7 +864,7 @@ def account_register():
         auto_login=False
         session.clear();session.permanent=True;session['user_id']=uid;session['auth_version']=1;session['auto_login']=False
         user=_load_auth_user(uid,1);persistent_token=_create_persistent_login_token(uid,1)
-        return _auth_json_response({'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'verification_required':bool(code),'server_version':'6.18.0','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
+        return _auth_json_response({'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'verification_required':bool(code),'server_version':'6.19.0','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
     except IntegrityError:return jsonify(error='이미 가입된 이메일입니다. Gmail의 점(.) 또는 +별칭을 바꾼 주소도 같은 계정으로 처리됩니다.'),409
 
 @app.post('/api/account/consents')
@@ -975,7 +975,7 @@ def account_login():
         user['auto_login']=auto_login;user['auth_session_id']=''
         persistent_token=_create_persistent_login_token(row['id'],auth_version)
         return _auth_json_response({
-            'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'server_version':'6.18.0','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
+            'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'server_version':'6.19.0','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
         },persistent=True,persistent_login_token=persistent_token)
     except Exception:
@@ -987,10 +987,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.18.0',idle_timeout_seconds=AUTH_IDLE_SECONDS)
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.19.0',idle_timeout_seconds=AUTH_IDLE_SECONDS)
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.18.0'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.19.0'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -1078,7 +1078,7 @@ def account_logout_all():
     av=int(row[0]);session.clear();session.permanent=True
     session['user_id']=u['id'];session['auth_version']=av;session['auto_login']=auto_login
     persistent_token=_create_persistent_login_token(u['id'],av)
-    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'auto_login':True,'server_version':'6.18.0','message':'현재 기기를 제외한 모든 기기에서 로그아웃했습니다.'},persistent=True,persistent_login_token=persistent_token)
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'auto_login':True,'server_version':'6.19.0','message':'현재 기기를 제외한 모든 기기에서 로그아웃했습니다.'},persistent=True,persistent_login_token=persistent_token)
 
 @app.get('/api/account/export')
 def account_export():
@@ -1114,7 +1114,7 @@ def account_change_password():
     av=int(row2[0]);auto_login=bool(session.get('auto_login') or u.get('auto_login'))
     session.clear();session.permanent=True;session['user_id']=u['id'];session['auth_version']=av;session['auto_login']=auto_login
     persistent_token=_create_persistent_login_token(u['id'],av)
-    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.18.0','auto_login':True},persistent=True,persistent_login_token=persistent_token)
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.19.0','auto_login':True},persistent=True,persistent_login_token=persistent_token)
 
 def _delete_account_rows(con,user_row):
     uid=int(user_row['id']);email_key=_canonical_email(user_row.get('email') or '')
@@ -1170,10 +1170,20 @@ def public_account_delete():
     with ENGINE.begin() as con:_delete_account_rows(con,row)
     session.clear();return _clear_auth_response({'ok':True,'message':'회원정보와 계정 연결 데이터 삭제가 완료되었습니다.'})
 
+@app.get('/api/mobile-shell-config')
+def mobile_shell_config():
+    base=(os.getenv('PUBLIC_APP_URL') or os.getenv('RENDER_EXTERNAL_URL') or request.url_root).rstrip('/')
+    return jsonify(
+      ok=True,app='리셀 PICK',web_version='6.19.0',android_version='1.0.0',
+      base_url=base,support_url='https://open.kakao.com/o/gCdVxSFi',
+      privacy_url=base+'/privacy',terms_url=base+'/terms',account_delete_url=base+'/account-delete',
+      minimum_android_api=26,target_android_api=36,native_bridge='v1'
+    )
+
 @app.get('/api/public/legal-status')
 def public_legal_status():
     base=(os.getenv('PUBLIC_APP_URL') or os.getenv('RENDER_EXTERNAL_URL') or request.url_root).rstrip('/')
-    return jsonify(ok=True,version='6.18.0',privacy_url=base+'/privacy',terms_url=base+'/terms',account_delete_url=base+'/account-delete')
+    return jsonify(ok=True,version='6.19.0',privacy_url=base+'/privacy',terms_url=base+'/terms',account_delete_url=base+'/account-delete')
 
 @app.get('/api/cloud/snapshot')
 def cloud_snapshot_get():
@@ -1501,12 +1511,12 @@ def _record_ai_usage(user,meta):
 @app.get('/api/app-config')
 def app_config():
     s=_runtime_settings();current=str(request.args.get('version') or '').strip()
-    latest=s.get('latest_version','6.18.0');minimum=s.get('minimum_version','6.12.2');mode=s.get('update_mode','optional')
+    latest=s.get('latest_version','6.19.0');minimum=s.get('minimum_version','6.12.2');mode=s.get('update_mode','optional')
     update_available=bool(current and _version_tuple(current)<_version_tuple(latest))
     force_update=bool(mode=='required' and current and _version_tuple(current)<_version_tuple(minimum or latest))
     return jsonify(latest_version=latest,minimum_version=minimum,update_mode=mode,update_available=update_available,force_update=force_update,
       update_message=s.get('update_message',''),update_url=s.get('update_url','/'),beta_program_name=s.get('beta_program_name','리셀 PICK 비공개 베타'),
-      beta_target_count=int(s.get('beta_target_count') or 15),server_version='6.18.0')
+      beta_target_count=int(s.get('beta_target_count') or 15),server_version='6.19.0')
 
 @app.get('/api/admin/app-settings')
 def admin_app_settings():
@@ -1519,9 +1529,9 @@ def admin_app_settings_save():
     admin,err=_require_admin()
     if err:return err
     d=request.get_json(silent=True) or {};mode=str(d.get('update_mode') or 'optional').lower()
-    latest=str(d.get('latest_version') or '6.18.0').strip()[:40];minimum=str(d.get('minimum_version') or latest).strip()[:40]
+    latest=str(d.get('latest_version') or '6.19.0').strip()[:40];minimum=str(d.get('minimum_version') or latest).strip()[:40]
     if mode not in {'off','optional','required'}:return jsonify(error='업데이트 방식을 확인해 주세요.'),400
-    if not re.fullmatch(r'\d+(?:\.\d+){1,3}',latest) or not re.fullmatch(r'\d+(?:\.\d+){1,3}',minimum):return jsonify(error='버전은 6.18.0 형식으로 입력해 주세요.'),400
+    if not re.fullmatch(r'\d+(?:\.\d+){1,3}',latest) or not re.fullmatch(r'\d+(?:\.\d+){1,3}',minimum):return jsonify(error='버전은 6.19.0 형식으로 입력해 주세요.'),400
     try:beta_target=max(12,min(100,int(d.get('beta_target_count') or 15)))
     except (TypeError,ValueError):return jsonify(error='베타 목표 인원은 12~100명 사이 숫자로 입력해 주세요.'),400
     values={'latest_version':latest,'minimum_version':minimum,'update_mode':mode,
@@ -2040,7 +2050,7 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     try:
-        u=_current_user();_record_client_error((u or {}).get('id'),'server_500',str(e),source=request.path,page=request.path,app_version='6.18.0',device=request.headers.get('User-Agent',''))
+        u=_current_user();_record_client_error((u or {}).get('id'),'server_500',str(e),source=request.path,page=request.path,app_version='6.19.0',device=request.headers.get('User-Agent',''))
     except Exception:logging.exception('server error logging failed')
     if request.path.startswith('/api/'): return jsonify(error='분석 서버 내부 오류가 발생했습니다. 잠시 후 다시 시도하세요.'),500
     return '서버 오류',500
@@ -2638,10 +2648,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.18.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.19.0',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.18.0',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.19.0',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
