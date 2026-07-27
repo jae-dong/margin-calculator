@@ -1,0 +1,14 @@
+리셀 PICK v6.12.4 검증 결과
+
+- Python 문법 검사: 통과
+- JavaScript 문법 검사: 통과
+- collectCloudPayload 함수 존재 및 호출 연결: 통과
+- 클라우드 저장 제외키(로그인키·캐시·API 사용량): 확인
+- 자동 저장 디바운스·중복 요청 방지·재시도 로직: 확인
+- 클라우드 충돌 409 처리: 확인
+- 로그인 유지 핵심 키명 resellPickPersistentLoginV6122 보존: 확인
+- 화면/서버/service worker/manifest/version.json 버전 일치: 확인
+- ZIP 무결성 검사: 통과
+- 클라우드 자동 저장 동의 이력 API 연결: 확인
+- TERMS_VERSION/PRIVACY_VERSION/CLOUD_AUTO_SAVE_CONSENT_VERSION 정의: 확인
+- Chromium 모의 환경 자동 저장 시나리오: 통과(기록 변경→자동 PUT, 사진·로그인키 제외, 오류 0건)
