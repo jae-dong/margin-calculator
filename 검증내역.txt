@@ -1,12 +1,11 @@
-리셀 PICK v6.11.7 검증 내역
+리셀 PICK v6.11.8 검증 내역
 
-- app.py Python 문법 검사 통과
-- index.html 인라인 JavaScript 문법 검사 통과
-- account_resume_v2 공개 API 경로 및 함수 중복 검사 통과
-- 로그인 응답·내 계정·하트비트·복원 응답에 login_resume_token 포함 확인
-- localStorage·IndexedDB 저장 및 로그아웃 삭제 경로 확인
-- 서비스워커·manifest·version.json 버전 6.11.7 통일
-- 폴드폰 pointer:coarse에서 로그인창 상단 고정 CSS 확인
+- 원본 오류 원인 확인: localResumeAt이 try 블록 안에서 const로 선언돼 블록 밖에서 접근 시 ReferenceError 발생
+- localResumeAt을 함수 범위 변수로 이동해 로그인 저장소 복원 함수 실행 테스트 통과
+- HTML 인라인 JavaScript node --check 통과
+- app.py Python 컴파일 통과
+- version.json·manifest.json JSON 검사 통과
+- 서비스워커·manifest·version.json·화면·서버 버전 6.11.8 통일
 - ZIP 무결성 검사 통과
 
-주의: 사용자 Render 서버와 실제 폴드폰에서의 최종 결과는 배포 후 확인해야 합니다.
+주의: Render 실제 서버와 사용자 휴대폰의 새로고침·앱 재실행 결과는 배포 후 확인이 필요합니다.

@@ -1,8 +1,8 @@
 {
   "app": "리셀 PICK WEB",
-  "version": "6.11.7",
+  "version": "6.11.8",
   "release": "새로고침·앱 재실행 로그인 유지 단순화",
-  "name": "리셀 PICK v6.11.7",
+  "name": "리셀 PICK v6.11.8",
   "updated": "2026-07-27",
   "notes": [
     "localStorage 단일 1시간 로그인 복원키를 추가해 기존 세션·장치키 오류와 분리",
