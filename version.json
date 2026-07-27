@@ -1,5 +1,5 @@
 {
-  "version": "6.12.8",
-  "build": "persistent-db-token",
-  "released_at": "2026-07-27T10:00:00+09:00"
+  "version": "6.13.0",
+  "build": "beta-stability-guest-scroll",
+  "released_at": "2026-07-27T22:30:00+09:00"
 }
