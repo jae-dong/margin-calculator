@@ -1,9 +1,9 @@
-리셀 PICK v6.15.0 적용 방법
+리셀 PICK v6.16.0 적용 방법
 
-1. ZIP 압축을 풉니다.
-2. 파일 14개를 app.py가 있는 GitHub 저장소 최상단에 전부 덮어씁니다.
-3. GitHub Desktop Summary: 리셀 PICK v6.15.0 베타 테스트 센터 업데이트
-4. Commit to main → Push origin을 누릅니다.
-5. Render가 Live가 되면 /version.json에서 6.15.0을 확인합니다.
-6. 설정 → 베타 테스트 센터에서 환경 자동 점검과 의견 전송을 확인합니다.
-7. 관리자 계정은 설정 → 회원 관리 안의 베타 의견 관리에서 접수 내용을 확인합니다.
+1. ZIP을 풉니다.
+2. ZIP 안의 모든 파일을 app.py가 있는 GitHub 저장소 최상단에 덮어씁니다.
+3. GitHub Desktop에서 Commit to main → Push origin을 누릅니다.
+4. Render 배포가 Live가 된 뒤 /version.json에서 6.16.0을 확인합니다.
+5. 관리자 설정에서 베타테스터·업데이트·오류 로그·서버 AI 사용량을 확인합니다.
+
+중요: 로그인 유지 구조는 v6.12.2의 DB 단일키 방식을 그대로 유지했습니다.

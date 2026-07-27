@@ -1,5 +1,6 @@
 {
-  "version": "6.15.0",
+  "version": "6.16.0",
   "name": "리셀 PICK",
-  "updated_at": "2026-07-27T15:00:00Z"
+  "released_at": "2026-07-27",
+  "channel": "beta"
 }
