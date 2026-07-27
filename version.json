@@ -1,5 +1,5 @@
 {
-  "version": "6.12.1",
-  "build": "2026-07-27",
-  "summary": "단일 1시간 로그인 토큰으로 새로고침·재접속 로그인 유지 안정화"
+  "version": "6.12.2",
+  "build": "persistent-db-token",
+  "released_at": "2026-07-27T10:00:00+09:00"
 }

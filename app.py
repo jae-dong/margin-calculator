@@ -438,7 +438,9 @@ def _ensure_device_token_for_session(sid):
 def _persistent_login_hash(token):
     raw=str(token or '').strip()
     if not raw:return ''
-    return hmac.new(str(app.config['SECRET_KEY']).encode('utf-8'),raw.encode('utf-8'),hashlib.sha256).hexdigest()
+    # Opaque 48-byte random tokens are stored only as SHA-256 hashes.
+    # This remains valid across Render workers and SECRET_KEY rotations.
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 def _request_persistent_login_token():
     token=str(request.headers.get(PERSISTENT_LOGIN_HEADER) or '').strip()
@@ -548,13 +550,21 @@ def _ensure_session_record(uid,auth_version,sid=None,auto_login=False):
     return {'session_id':sid,'user_id':int(uid),'auth_version':int(auth_version or 1),'auto_login':bool(auto_login),'last_activity_at':_iso_utc()}
 
 def _current_user():
-    """Return the signed-in user using one stable, signed 1-hour token.
+    """Resolve the user from one opaque DB-backed 1-hour login token.
 
-    v6.12.1 deliberately does not require an auth_sessions/persistent-login DB row
-    for ordinary page reloads.  The signed token is sent in both an HttpOnly cookie
-    and the Authorization header.  This avoids the previous login-success ->
-    immediate /me failure caused by session-row/token synchronization races.
+    The token is stored in localStorage and an HttpOnly cookie.  It is independent
+    of Flask session cookies, worker processes and SECRET_KEY rotations.
     """
+    persistent_token=_request_persistent_login_token()
+    if persistent_token:
+        prow=_validate_persistent_login_token(persistent_token,touch=True)
+        if prow:
+            user=_load_auth_user(prow.get('user_id'),prow.get('auth_version'))
+            if user:
+                user['auto_login']=True
+                user['auth_session_id']=''
+                return user
+    # Signed token fallback only for one-time migration from v6.12.1.
     token_uid,token_auth,_token_sid,token_auto=_request_auth_token()
     if token_uid:
         row=_load_auth_user(token_uid,token_auth)
@@ -562,7 +572,6 @@ def _current_user():
             row['auto_login']=bool(token_auto)
             row['auth_session_id']=''
             return row
-    # Same-origin cookie session is only a fallback for an already-open page.
     cookie_uid=session.get('user_id');cookie_auth=session.get('auth_version')
     if cookie_uid:
         row=_load_auth_user(cookie_uid,cookie_auth)
@@ -577,17 +586,16 @@ def _auth_json_response(payload,status=200,token=None,persistent=False,device_to
     response=jsonify(**payload);response.status_code=status
     same_site=str(app.config.get('SESSION_COOKIE_SAMESITE') or 'Lax')
     kwargs={'httponly':True,'secure':bool(app.config.get('SESSION_COOKIE_SECURE')),'samesite':same_site,'path':'/','max_age':AUTH_IDLE_SECONDS,'expires':datetime.utcnow()+timedelta(seconds=AUTH_IDLE_SECONDS)}
-    if token:
-        response.set_cookie(AUTH_COOKIE_NAME,token,**kwargs)
-    else:
-        response.delete_cookie(AUTH_COOKIE_NAME,path='/')
-    # Remove all legacy recovery cookies so stale pre-v6.12.1 credentials cannot
-    # override the single current token on Samsung Internet/PWA relaunch.
+    if token:response.set_cookie(AUTH_COOKIE_NAME,token,**kwargs)
+    if persistent_login_token:
+        response.set_cookie(PERSISTENT_LOGIN_COOKIE_NAME,persistent_login_token,**kwargs)
+    elif not token:
+        response.delete_cookie(PERSISTENT_LOGIN_COOKIE_NAME,path='/')
+    # Remove obsolete recovery cookies only.
     response.delete_cookie(AUTH_RESTORE_COOKIE_NAME,path='/')
     response.delete_cookie(AUTH_DEVICE_COOKIE_NAME,path='/')
     response.delete_cookie(LOGIN_RESUME_COOKIE_NAME,path='/')
-    response.delete_cookie(PERSISTENT_LOGIN_COOKIE_NAME,path='/')
-    response.headers['X-Resell-Pick-Auth']='active' if token else 'none'
+    response.headers['X-Resell-Pick-Auth']='active' if (token or persistent_login_token) else 'none'
     return response
 
 def _clear_auth_response(payload=None,status=200):
@@ -680,15 +688,13 @@ def require_member_for_app_api():
 @app.route('/api/account/me',methods=['GET','POST'])
 def account_me():
     u=_current_user()
-    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.12.1'),401
+    if not u:return jsonify(authenticated=False,user=None,usage=0,limit=30,unlimited=False,consents=None,server_version='6.12.2',code='login_required'),401
     auth_version=int(u.get('auth_version') or session.get('auth_version') or 1)
-    auto_login=bool(u.get('auto_login') or session.get('auto_login'))
     session.clear();session.permanent=True
-    session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=auto_login
-    # Refresh the one-hour token on every successful account check.
-    token=_issue_auth_token(u['id'],auth_version,None,auto_login)
-    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.12.1','auth_token':token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
-    return _auth_json_response(payload,token=token,persistent=True)
+    session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=True
+    persistent_token=_ensure_persistent_login_token(u['id'],auth_version)
+    payload={'authenticated':True,'user':u,'usage':_usage_for(u['id']),'limit':None if u.get('is_admin') else _plan_limit(u['plan']),'unlimited':bool(u.get('is_admin')),'consents':_consent_status(u['id']),'server_version':'6.12.2','persistent_login_token':persistent_token,'auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS}
+    return _auth_json_response(payload,persistent=True,persistent_login_token=persistent_token)
 
 @app.post('/api/account/resume-v2')
 def account_resume_v2():
@@ -707,7 +713,7 @@ def account_resume_v2():
     auth_token=_issue_auth_token(uid,auth_version,sid,False)
     restore_token=_issue_restore_token(uid,auth_version,sid)
     login_resume_token=_issue_login_resume_token(uid,auth_version)
-    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.12.1','auth_token':auth_token,'restore_token':restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
+    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.12.2','auth_token':auth_token,'restore_token':restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
     return _auth_json_response(payload,token=auth_token,persistent=True,device_token=device_token,login_resume_token=login_resume_token)
 
 @app.post('/api/account/heartbeat')
@@ -715,11 +721,10 @@ def account_heartbeat():
     u=_current_user()
     if not u:return jsonify(error='로그인 시간이 만료되었습니다.',code='login_required'),401
     auth_version=int(u.get('auth_version') or session.get('auth_version') or 1)
-    auto_login=bool(u.get('auto_login') or session.get('auto_login'))
+    persistent_token=_ensure_persistent_login_token(u['id'],auth_version)
     session.clear();session.permanent=True
-    session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=auto_login
-    token=_issue_auth_token(u['id'],auth_version,None,auto_login)
-    return _auth_json_response({'ok':True,'authenticated':True,'auth_token':token,'server_version':'6.12.1','idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=True)
+    session['user_id']=int(u['id']);session['auth_version']=auth_version;session['auto_login']=True
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.12.2','idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
 
 @app.post('/api/account/restore')
 def account_restore():
@@ -767,7 +772,7 @@ def account_restore():
     auth_token=_issue_auth_token(uid,auth_version,sid,auto_login)
     new_restore_token=_issue_restore_token(uid,auth_version,sid)
     login_resume_token=_issue_login_resume_token(uid,auth_version)
-    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.12.1','auth_token':auth_token,'restore_token':new_restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
+    payload={'ok':True,'authenticated':True,'user':user,'usage':_usage_for(uid),'limit':None if user.get('is_admin') else _plan_limit(user['plan']),'unlimited':bool(user.get('is_admin')),'consents':_consent_status(uid),'server_version':'6.12.2','auth_token':auth_token,'restore_token':new_restore_token,'device_token':device_token,'login_resume_token':login_resume_token,'auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,'message':'로그인 상태를 복원했습니다.'}
     return _auth_json_response(payload,token=auth_token,persistent=True,device_token=device_token,login_resume_token=login_resume_token)
 
 @app.post('/api/account/register')
@@ -798,8 +803,8 @@ def account_register():
                 return jsonify(error='인증메일 발송 설정이 완료되지 않아 가입을 진행할 수 없습니다. 관리자에게 문의해 주세요.'),503
         auto_login=False
         session.clear();session.permanent=True;session['user_id']=uid;session['auth_version']=1;session['auto_login']=False
-        user=_load_auth_user(uid,1);token=_issue_auth_token(uid,1,None,False)
-        return _auth_json_response({'ok':True,'authenticated':True,'user':user,'auth_token':token,'verification_required':bool(code),'server_version':'6.12.1','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS},token=token,persistent=True)
+        user=_load_auth_user(uid,1);persistent_token=_create_persistent_login_token(uid,1)
+        return _auth_json_response({'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'verification_required':bool(code),'server_version':'6.12.2','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS},persistent=True,persistent_login_token=persistent_token)
     except IntegrityError:return jsonify(error='이미 가입된 이메일입니다. Gmail의 점(.) 또는 +별칭을 바꾼 주소도 같은 계정으로 처리됩니다.'),409
 
 @app.post('/api/account/consents')
@@ -897,11 +902,11 @@ def account_login():
         user=_load_auth_user(row['id'],auth_version)
         if not user:raise RuntimeError('authenticated user lookup failed')
         user['auto_login']=auto_login;user['auth_session_id']=''
-        token=_issue_auth_token(row['id'],auth_version,None,auto_login)
+        persistent_token=_create_persistent_login_token(row['id'],auth_version)
         return _auth_json_response({
-            'ok':True,'authenticated':True,'user':user,'auth_token':token,'server_version':'6.12.1','auto_login':auto_login,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
+            'ok':True,'authenticated':True,'user':user,'persistent_login_token':persistent_token,'server_version':'6.12.2','auto_login':True,'idle_timeout_seconds':AUTH_IDLE_SECONDS,
             'message':'관리자 계정으로 로그인했습니다.' if user.get('is_admin') else '로그인했습니다.'
-        },token=token,persistent=True)
+        },persistent=True,persistent_login_token=persistent_token)
     except Exception:
         logging.exception('login session creation failed user_id=%s',row.get('id'))
         session.clear()
@@ -911,10 +916,10 @@ def account_login():
 def account_login_status():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.12.1',idle_timeout_seconds=AUTH_IDLE_SECONDS)
+        return jsonify(ok=True,database=True,secure_cookie=bool(app.config.get('SESSION_COOKIE_SECURE')),version='6.12.2',idle_timeout_seconds=AUTH_IDLE_SECONDS)
     except Exception:
         logging.exception('login status database failed')
-        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.12.1'),503
+        return jsonify(ok=False,database=False,error='로그인 데이터베이스 연결 실패',version='6.12.2'),503
 
 @app.post('/api/account/verify-email')
 def account_verify_email():
@@ -982,6 +987,10 @@ def account_reset_password():
 
 @app.post('/api/account/logout')
 def account_logout():
+    current=_request_persistent_login_token()
+    if current:
+        try:_revoke_persistent_login_token(current)
+        except Exception:logging.exception('persistent logout revoke failed')
     session.clear()
     return _clear_auth_response({'ok':True})
 
@@ -997,8 +1006,8 @@ def account_logout_all():
         con.execute(text('UPDATE persistent_login_tokens SET revoked_at=:r WHERE user_id=:i AND revoked_at IS NULL'),{'r':_iso_utc(),'i':u['id']})
     av=int(row[0]);session.clear();session.permanent=True
     session['user_id']=u['id'];session['auth_version']=av;session['auto_login']=auto_login
-    token=_issue_auth_token(u['id'],av,None,auto_login)
-    return _auth_json_response({'ok':True,'authenticated':True,'auth_token':token,'auto_login':auto_login,'server_version':'6.12.1','message':'현재 기기를 제외한 모든 기기에서 로그아웃했습니다.'},token=token,persistent=True)
+    persistent_token=_create_persistent_login_token(u['id'],av)
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'auto_login':True,'server_version':'6.12.2','message':'현재 기기를 제외한 모든 기기에서 로그아웃했습니다.'},persistent=True,persistent_login_token=persistent_token)
 
 @app.get('/api/account/export')
 def account_export():
@@ -1032,8 +1041,8 @@ def account_change_password():
         con.execute(text('UPDATE persistent_login_tokens SET revoked_at=:r WHERE user_id=:i AND revoked_at IS NULL'),{'r':_iso_utc(),'i':u['id']})
     av=int(row2[0]);auto_login=bool(session.get('auto_login') or u.get('auto_login'))
     session.clear();session.permanent=True;session['user_id']=u['id'];session['auth_version']=av;session['auto_login']=auto_login
-    token=_issue_auth_token(u['id'],av,None,auto_login)
-    return _auth_json_response({'ok':True,'authenticated':True,'auth_token':token,'server_version':'6.12.1','auto_login':auto_login},token=token,persistent=True)
+    persistent_token=_create_persistent_login_token(u['id'],av)
+    return _auth_json_response({'ok':True,'authenticated':True,'persistent_login_token':persistent_token,'server_version':'6.12.2','auto_login':True},persistent=True,persistent_login_token=persistent_token)
 
 @app.delete('/api/account')
 def account_delete():
@@ -2116,10 +2125,10 @@ def export_excel():
 def health():
     try:
         with ENGINE.connect() as con:con.execute(text('SELECT 1')).scalar_one()
-        return jsonify(ok=True,version='6.12.1',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
+        return jsonify(ok=True,version='6.12.2',database='postgresql' if DB_URL.startswith('postgresql') else 'sqlite')
     except Exception as exc:
         logging.exception('health database check failed')
-        return jsonify(ok=False,version='6.12.1',database='unavailable',error='database connection failed'),503
+        return jsonify(ok=False,version='6.12.2',database='unavailable',error='database connection failed'),503
 
 @app.get('/ready')
 def ready():return health()
