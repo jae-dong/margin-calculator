@@ -1,0 +1,14 @@
+리셀 PICK v6.12.1 검증 결과
+
+1. Python 전체 문법 검사: 통과
+2. index.html 인라인 JavaScript 문법 검사(Node.js): 통과
+3. HTML id 중복 검사: 중복 없음
+4. 로그인 함수 중복 검사: submitAccount/refreshAccountUI/restoreAccountOnStartup 각 1개
+5. 로그인 성공 직후 /api/account/me 재호출 제거: 확인
+6. 새로고침 시작 시 /api/account/me 1회 호출 구조: 확인
+7. 인증 토큰 저장 키: resellPickLoginToken 고정
+8. 인증 토큰 서버 유효시간: 1시간
+9. 기존 세션행·장치키·복원키 없이 signed token만으로 사용자 조회: 확인
+10. 서비스워커/화면/서버/version.json 버전 6.12.1 통일: 확인
+
+제한: 이 작업 환경의 Chromium은 관리자 정책으로 로컬/가상 주소 실행이 차단되어 실제 Render 주소와 삼성 인터넷 조합의 자동 브라우저 테스트는 수행하지 못했습니다. 배포 후 실기기 최종 확인이 필요합니다.

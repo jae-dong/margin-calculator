@@ -199,7 +199,7 @@ body.rear-camera-open .camera-modal{display:flex!important}
 .memo-record-text{white-space:pre-wrap;word-break:break-word;line-height:1.55;margin-top:7px;padding:10px;border-radius:11px;background:#f7f9fc;color:#334155}
 .receipt-source-badge{display:inline-flex;margin-left:6px;padding:3px 7px;border-radius:999px;background:#e9f4ff;color:#145b98;font-size:10px;font-weight:900;vertical-align:middle}
 </style></head><body class="auth-locked"><div class="app">
-<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.12.0</span></header><section class="auth-gate" id="authGate" aria-live="polite">
+<header class="hero"><div class="brand-lockup"><img class="brand-logo" src="/icon-192.png" alt="리셀 PICK 로고"/><div><h1>리셀 <span>PICK</span></h1><p>브랜드 상품을 더 빠르고 정확하게 소싱하세요</p></div></div><span class="ver">v6.12.1</span></header><section class="auth-gate" id="authGate" aria-live="polite">
 <img class="auth-gate-logo" src="/icon-192.png" alt="리셀 PICK 로고">
 <h2>회원가입 후 이용해 주세요</h2>
 <p>사진 촬영·사진 분석, 상품 검색, 마진 계산, 기록, 장바구니, 통계, 설정 등 리셀 PICK의 모든 기능은 회원가입 또는 로그인 후 이용할 수 있습니다.</p>
@@ -486,7 +486,7 @@ function saveApiCache(cache){try{const rows=Object.entries(cache).sort((a,b)=>(b
 function getApiCache(key,maxAgeDays){const c=loadApiCache(),x=c[key];if(!x)return null;if(Date.now()-(x.savedAt||0)>maxAgeDays*86400000){delete c[key];saveApiCache(c);return null}return x.data||null}
 function setApiCache(key,data){const c=loadApiCache();c[key]={savedAt:Date.now(),data};saveApiCache(c)}
 async function sha256Blob(blob){try{const buf=await blob.arrayBuffer(),hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}catch{return `${blob.size}-${blob.lastModified||0}-${blob.name||''}`}}
-function friendlyApiError(message,status=0){const m=String(message||'');if(status===401&&/로그인|회원가입|login_required/i.test(m)){setTimeout(async()=>{const ok=await refreshAccountUI();if(!ok&&!AUTH_BOOTSTRAP_PENDING&&!AUTH_RESTORE_IN_PROGRESS&&!(persistentLoginToken()||authToken()))requireMemberAccess('로그인 시간이 만료되었습니다. 다시 로그인해 주세요.')},0);return '로그인 상태를 다시 확인하고 있습니다. 잠시 후 다시 시도해 주세요.'}if(status===429||/insufficient_quota|current quota|exceeded.*quota/i.test(m))return 'AI 분석 사용 한도가 소진되었습니다. 관리자 API 결제·잔액을 확인해 주세요.';if(status===401||/incorrect api key|invalid.*api.*key|unauthorized/i.test(m))return 'AI 서버 인증 설정을 확인해 주세요.';if(status===413)return '사진 용량이 너무 큽니다. 사진을 다시 선택해 주세요.';if(/timeout|timed out/i.test(m))return 'AI 서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.';return m||'분석에 실패했습니다.'}
+function friendlyApiError(message,status=0){const m=String(message||'');if(status===401&&/로그인|회원가입|login_required/i.test(m)){setTimeout(async()=>{const ok=await refreshAccountUI();if(!ok&&!AUTH_BOOTSTRAP_PENDING&&!AUTH_RESTORE_IN_PROGRESS&&!authToken())requireMemberAccess('로그인 시간이 만료되었습니다. 다시 로그인해 주세요.')},0);return '로그인 상태를 다시 확인하고 있습니다. 잠시 후 다시 시도해 주세요.'}if(status===429||/insufficient_quota|current quota|exceeded.*quota/i.test(m))return 'AI 분석 사용 한도가 소진되었습니다. 관리자 API 결제·잔액을 확인해 주세요.';if(status===401||/incorrect api key|invalid.*api.*key|unauthorized/i.test(m))return 'AI 서버 인증 설정을 확인해 주세요.';if(status===413)return '사진 용량이 너무 큽니다. 사진을 다시 선택해 주세요.';if(/timeout|timed out/i.test(m))return 'AI 서버 응답이 늦습니다. 잠시 후 다시 시도해 주세요.';return m||'분석에 실패했습니다.'}
 async function readJsonResponse(r,label='분석'){const type=(r.headers.get('content-type')||'').toLowerCase(),text=await r.text();let d=null;if(type.includes('application/json')||text.trim().startsWith('{'))try{d=JSON.parse(text)}catch(e){}if(!d){const hint=r.status===413?'사진 용량이 너무 큽니다.':r.status>=500?'분석 서버가 잠시 응답하지 않습니다.':'분석 서버 응답 형식 오류';throw new Error(`${hint} (${r.status||'연결 오류'})`)}if(!r.ok)throw new Error(friendlyApiError(d.error||`${label} 실패`,r.status));recordApiUsage(d._api_usage);return d}
 async function postImg(file,url){
  if(!ensureAnalysisAllowance())throw new Error('회원가입 후 이용해 주세요.');
@@ -1245,6 +1245,7 @@ document.addEventListener('change',e=>{if(e.target.closest('#m-g,#m-s')&&e.targe
 window.addEventListener('pagehide',saveWorkingDraft);document.addEventListener('visibilitychange',()=>{if(document.hidden)saveWorkingDraft()});
 let autoMarketTimer=null;
 function autoAnalyzeCurrentIfNeeded(){
+ if(typeof AUTH_BOOTSTRAP_PENDING!=='undefined'&&(AUTH_BOOTSTRAP_PENDING||AUTH_RESTORE_IN_PROGRESS||!CURRENT_ACCOUNT_USER))return;
  clearTimeout(autoMarketTimer);autoMarketTimer=setTimeout(()=>{
   const sneaker=$('m-s')?.classList.contains('active');
   if(sneaker){const q=sneakerKeyword();if(q&&!window.sneakerMarketAnalysis?.keyword)analyzeSneakerMarketKeyword(true).catch(()=>{});}
@@ -1253,7 +1254,7 @@ function autoAnalyzeCurrentIfNeeded(){
 }
 window.addEventListener('pageshow',autoAnalyzeCurrentIfNeeded);document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoAnalyzeCurrentIfNeeded()});
 
-loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js?v=6.12.0',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});}
+loadSettings();if($('gAutoShop'))$('gAutoShop').value=localStorage.getItem('generalAutoShop')||'coupang';updateGeneralAutoShopHint();selectGeneralPlatform(activeGeneralPlatform);selectGeneralFeePlatform(activeGeneralFeePlatform);restoreSneakerDraft();restoreWorkingDraft();toggleNaverCustomStore();calcDiscount();calcG();calcN();calcS();validateComp();renderRecords();renderCart();renderReport();restoreLastSourcingMode();updateGeneralSearchButtons();updateKreamSearchButton();if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js?v=6.12.1',{updateViaCache:'none'}).then(reg=>reg.update().catch(()=>{})).catch(()=>{});}
 
 window.addEventListener('pageshow',()=>{
  try{
@@ -1277,7 +1278,7 @@ const ONBOARDING_KEY='resellPickOnboardingDoneV1';
 function showOnboarding(){if(localStorage.getItem(ONBOARDING_KEY)==='1')return;const m=$('onboardingModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
 function closeOnboarding(never=false){const m=$('onboardingModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}if(never)localStorage.setItem(ONBOARDING_KEY,'1')}
 function exportAppBackup(){
- try{const data={app:'리셀 PICK',version:'6.12.0',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
+ try{const data={app:'리셀 PICK',version:'6.12.1',exportedAt:new Date().toISOString(),storage:{}};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!CLOUD_EXCLUDE_KEYS.has(k))data.storage[k]=localStorage.getItem(k)}const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='리셀PICK_전체백업_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}catch(e){alert('백업 파일을 만들지 못했습니다.')}
 }
 async function restoreAppBackup(event){const f=event.target.files?.[0];event.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(!data?.storage||typeof data.storage!=='object')throw new Error();if(!confirm('현재 기기의 데이터를 백업 파일 내용으로 복원하시겠습니까?'))return;Object.entries(data.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));alert('복원이 완료되었습니다. 화면을 다시 불러옵니다.');location.reload()}catch(e){alert('올바른 리셀 PICK 백업 파일이 아닙니다.')}}
 function clearAllAppData(){if(!confirm('상품 기록·영수증·장바구니·설정 등 내 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'))return;if(!confirm('정말 전체 삭제하시겠습니까? 필요한 데이터는 먼저 백업해 주세요.'))return;localStorage.clear();alert('내 데이터가 모두 삭제되었습니다.');location.reload()}
@@ -1313,169 +1314,44 @@ function closeLegal(){const m=$('legalModal');if(m){m.classList.remove('show');m
 
 setTimeout(()=>{renderApiUsage();renderCustomerUsage();renderPlanAdmin();initBetaAccess();showOnboarding()},0);
 
-const AUTH_TOKEN_KEY='resellPickAuthTokenV6120',AUTH_TOKEN_SAVED_AT_KEY='resellPickAuthTokenSavedAtV6120',PERSISTENT_LOGIN_KEY='resellPickPersistentLoginToken',PERSISTENT_LOGIN_SAVED_AT_KEY='resellPickPersistentLoginSavedAt',AUTH_LAST_ERROR_KEY='resellPickAuthLastErrorV6120',REMEMBER_LOGIN_ID_KEY='resellPickRememberLoginId',AUTO_LOGIN_PREF_KEY='resellPickAutoLoginPreference';
+const AUTH_TOKEN_KEY='resellPickLoginToken',AUTH_TOKEN_SAVED_AT_KEY='resellPickLoginTokenSavedAt',AUTH_LAST_ERROR_KEY='resellPickAuthLastErrorV6121',REMEMBER_LOGIN_ID_KEY='resellPickRememberLoginId',AUTO_LOGIN_PREF_KEY='resellPickAutoLoginPreference';
 const AUTH_IDLE_MS=60*60*1000;
-let ACCOUNT_REFRESH_PROMISE=null,AUTH_BOOTSTRAP_PENDING=true,AUTH_RESTORE_IN_PROGRESS=false,AUTH_TOKEN_MEMORY='';let accountMode='register';let cloudSnapshotVersion=0,AUTH_LAST_TOUCH_WRITE=0;
-const LEGACY_AUTH_KEYS=['resellPickAuthToken','resellPickAuthTokenSavedAt','resellPickRestoreToken','resellPickRestoreTokenSavedAt','resellPickDeviceToken','resellPickDeviceTokenSavedAt','resellPickLoginResumeV2','resellPickLoginResumeV2SavedAt','resellPickAuthLastActivity','resellPickAuthStateVersion'];
-const CLOUD_EXCLUDE_KEYS=new Set(['resellPickAdminUnlocked',AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,PERSISTENT_LOGIN_KEY,PERSISTENT_LOGIN_SAVED_AT_KEY,AUTH_LAST_ERROR_KEY,REMEMBER_LOGIN_ID_KEY,AUTO_LOGIN_PREF_KEY,...LEGACY_AUTH_KEYS]);
+let ACCOUNT_REFRESH_PROMISE=null,AUTH_BOOTSTRAP_PENDING=true,AUTH_RESTORE_IN_PROGRESS=false,AUTH_TOKEN_MEMORY='';let accountMode='register';let cloudSnapshotVersion=0;
+const LEGACY_AUTH_KEYS=['resellPickAuthTokenV6120','resellPickAuthToken','resellPickAuthTokenSavedAt','resellPickPersistentLoginToken','resellPickPersistentLoginSavedAt','resellPickRestoreToken','resellPickRestoreTokenSavedAt','resellPickDeviceToken','resellPickDeviceTokenSavedAt','resellPickLoginResumeV2','resellPickLoginResumeV2SavedAt','resellPickAuthLastActivity','resellPickAuthStateVersion'];
+const CLOUD_EXCLUDE_KEYS=new Set(['resellPickAdminUnlocked',AUTH_TOKEN_KEY,AUTH_TOKEN_SAVED_AT_KEY,AUTH_LAST_ERROR_KEY,REMEMBER_LOGIN_ID_KEY,AUTO_LOGIN_PREF_KEY,...LEGACY_AUTH_KEYS]);
 function saveAuthDiagnostic(error,hadToken=false){try{localStorage.setItem(AUTH_LAST_ERROR_KEY,JSON.stringify({at:new Date().toISOString(),status:Number(error?.status||0),code:String(error?.code||''),message:String(error?.message||''),hadToken:!!hadToken}))}catch(e){}}
-function readAuthDiagnostic(){try{const d=JSON.parse(localStorage.getItem(AUTH_LAST_ERROR_KEY)||'null');if(!d)return '';const detail=[d.status||'',d.code||''].filter(Boolean).join('/');return `이전 로그인 유지 확인 실패${detail?' ('+detail+')':''}. ${d.hadToken?'기기 저장정보는 있었지만 서버 인증이 거부되었습니다.':'기기 저장정보가 확인되지 않았습니다.'}`}catch(e){return ''}}
+function readAuthDiagnostic(){try{const d=JSON.parse(localStorage.getItem(AUTH_LAST_ERROR_KEY)||'null');if(!d)return '';const detail=[d.status||'',d.code||''].filter(Boolean).join('/');return `이전 로그인 유지 확인 실패${detail?' ('+detail+')':''}. ${d.hadToken?'저장된 로그인키가 만료되었거나 계정 상태가 변경되었습니다.':'기기에 저장된 로그인키가 없습니다.'}`}catch(e){return ''}}
 function clearAuthDiagnostic(){try{localStorage.removeItem(AUTH_LAST_ERROR_KEY)}catch(e){}}
-function authToken(){
- try{
-  const stored=String(localStorage.getItem(AUTH_TOKEN_KEY)||'').trim();
-  if(stored){AUTH_TOKEN_MEMORY=stored;return stored}
- }catch(e){}
- return AUTH_TOKEN_MEMORY||'';
-}
-function persistentLoginToken(){try{return String(localStorage.getItem(PERSISTENT_LOGIN_KEY)||'').trim()}catch(e){return ''}}
-function authHeaders(extra={}){const token=authToken(),persistent=persistentLoginToken();return {...extra,...(token?{'Authorization':'Bearer '+token,'X-Resell-Pick-Token':token}:{}),...(persistent?{'X-Resell-Pick-Login':persistent}:{})}}
+function migrateAuthToken(){try{let token=String(localStorage.getItem(AUTH_TOKEN_KEY)||'').trim();if(!token){for(const k of ['resellPickAuthTokenV6120','resellPickAuthToken']){const v=String(localStorage.getItem(k)||'').trim();if(v){token=v;break}}if(token)localStorage.setItem(AUTH_TOKEN_KEY,token)}if(token)AUTH_TOKEN_MEMORY=token;return token}catch(e){return AUTH_TOKEN_MEMORY||''}}
+function authToken(){try{const stored=String(localStorage.getItem(AUTH_TOKEN_KEY)||'').trim();if(stored){AUTH_TOKEN_MEMORY=stored;return stored}}catch(e){}return AUTH_TOKEN_MEMORY||''}
+function persistentLoginToken(){return ''}
+function authHeaders(extra={}){const token=authToken();return {...extra,...(token?{'Authorization':'Bearer '+token,'X-Resell-Pick-Token':token}:{})}}
 function memberFetch(url,options={}){return fetch(url,{...options,credentials:'include',cache:options.cache||'no-store',headers:authHeaders(options.headers||{})})}
 async function requestPersistentStorage(){try{if(navigator.storage?.persist)await navigator.storage.persist()}catch(e){}}
-async function hydrateAuthStorage(){
- let token='',persistent='';
- try{token=String(localStorage.getItem(AUTH_TOKEN_KEY)||'').trim();persistent=String(localStorage.getItem(PERSISTENT_LOGIN_KEY)||'').trim()}catch(e){}
- AUTH_TOKEN_MEMORY=token;
- requestPersistentStorage();
- return !!(token||persistent);
-}
-async function saveAuthBundle(data={}){
- const token=String(data.auth_token||'').trim(),persistent=String(data.persistent_login_token||'').trim();
- if(!token&&!persistent)return !!(authToken()||persistentLoginToken());
- if(token)AUTH_TOKEN_MEMORY=token;
- try{
-  if(token){localStorage.setItem(AUTH_TOKEN_KEY,token);localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(Date.now()));if(localStorage.getItem(AUTH_TOKEN_KEY)!==token)throw new Error('auth_storage_verify_failed')}
-  if(persistent){localStorage.setItem(PERSISTENT_LOGIN_KEY,persistent);localStorage.setItem(PERSISTENT_LOGIN_SAVED_AT_KEY,String(Date.now()));if(localStorage.getItem(PERSISTENT_LOGIN_KEY)!==persistent)throw new Error('persistent_storage_verify_failed')}
- }catch(e){throw new Error('로그인 정보를 기기에 저장하지 못했습니다. 브라우저의 사이트 데이터 저장을 허용한 뒤 다시 로그인해 주세요.')}
- clearAuthDiagnostic();requestPersistentStorage();return true;
-}
-
+async function hydrateAuthStorage(){migrateAuthToken();requestPersistentStorage();return !!authToken()}
+async function saveAuthBundle(data={}){const token=String(data.auth_token||'').trim();if(!token)return !!authToken();AUTH_TOKEN_MEMORY=token;try{localStorage.setItem(AUTH_TOKEN_KEY,token);localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(Date.now()));if(String(localStorage.getItem(AUTH_TOKEN_KEY)||'')!==token)throw new Error('auth_storage_verify_failed')}catch(e){throw new Error('로그인 정보를 기기에 저장하지 못했습니다. 브라우저의 사이트 데이터 저장을 허용한 뒤 다시 로그인해 주세요.')}clearAuthDiagnostic();requestPersistentStorage();return true}
 function saveAuthToken(token){return saveAuthBundle({auth_token:token})}
-function touchAuthActivity(){AUTH_LAST_TOUCH_WRITE=Date.now()}
+function touchAuthActivity(){try{localStorage.setItem(AUTH_TOKEN_SAVED_AT_KEY,String(Date.now()))}catch(e){}}
 function storedAuthLastActivity(){try{return Number(localStorage.getItem(AUTH_TOKEN_SAVED_AT_KEY)||0)}catch(e){return 0}}
-function deviceSessionWithinHour(){return !!(persistentLoginToken()||authToken())}
-async function clearAuthToken(){
- AUTH_TOKEN_MEMORY='';
- try{
-  localStorage.removeItem(AUTH_TOKEN_KEY);localStorage.removeItem(AUTH_TOKEN_SAVED_AT_KEY);localStorage.removeItem(PERSISTENT_LOGIN_KEY);localStorage.removeItem(PERSISTENT_LOGIN_SAVED_AT_KEY);
-  LEGACY_AUTH_KEYS.forEach(k=>localStorage.removeItem(k));
- }catch(e){}
-}
-async function accountRequest(url,options={}){
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
- try{
-  const r=await fetch(url,{...options,credentials:'include',cache:'no-store',redirect:'follow',headers:authHeaders({'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})}),signal:options.signal||controller.signal});
-  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
-  if(!r.ok){
-   let message=d.error||'';
-   if(!message&&r.status===404)message='로그인 서버 주소를 찾지 못했습니다. Render 배포 주소에서 앱을 실행해 주세요.';
-   else if(!message&&r.status>=500)message='로그인 서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
-   else if(!message)message='로그인 요청을 처리하지 못했습니다.';
-   const err=new Error(message);err.status=r.status;err.code=d.code||'';throw err;
-  }
-  if(d?.auth_token||d?.persistent_login_token)await saveAuthBundle(d);
-  return d;
- }catch(e){
-  if(e?.name==='AbortError'){const err=new Error('로그인 서버 응답이 늦습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');err.code='network_timeout';throw err}
-  if(e instanceof TypeError){const err=new Error('로그인 서버에 연결하지 못했습니다. 인터넷 연결과 Render 배포 상태를 확인해 주세요.');err.code='network_error';throw err}
-  throw e;
- }finally{clearTimeout(timer)}
-}
-async function checkLoginServerStatus(){
- try{const d=await accountRequest('/api/account/login-status',{method:'GET'});if(!d?.ok)throw new Error(d?.error||'로그인 서버 점검 실패');return true}
- catch(e){setAccountFormMessage(e.message||'로그인 서버에 연결하지 못했습니다.','error');return false}
-}
+function deviceSessionWithinHour(){return !!authToken()}
+async function clearAuthToken(){AUTH_TOKEN_MEMORY='';try{localStorage.removeItem(AUTH_TOKEN_KEY);localStorage.removeItem(AUTH_TOKEN_SAVED_AT_KEY);LEGACY_AUTH_KEYS.forEach(k=>localStorage.removeItem(k))}catch(e){}}
+async function accountRequest(url,options={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);try{const r=await fetch(url,{...options,credentials:'include',cache:'no-store',redirect:'follow',headers:authHeaders({'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})}),signal:options.signal||controller.signal});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}if(!r.ok){let message=d.error||'';if(!message&&r.status===404)message='로그인 서버 주소를 찾지 못했습니다. Render 배포 주소에서 앱을 실행해 주세요.';else if(!message&&r.status>=500)message='로그인 서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';else if(!message)message='로그인 요청을 처리하지 못했습니다.';const err=new Error(message);err.status=r.status;err.code=d.code||'';throw err}if(d?.auth_token)await saveAuthBundle(d);return d}catch(e){if(e?.name==='AbortError'){const err=new Error('로그인 서버 응답이 늦습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');err.code='network_timeout';throw err}if(e instanceof TypeError){const err=new Error('로그인 서버에 연결하지 못했습니다. 인터넷 연결과 Render 배포 상태를 확인해 주세요.');err.code='network_error';throw err}throw e}finally{clearTimeout(timer)}}
+async function checkLoginServerStatus(){try{const d=await accountRequest('/api/account/login-status',{method:'GET'});if(!d?.ok)throw new Error(d?.error||'로그인 서버 점검 실패');return true}catch(e){setAccountFormMessage(e.message||'로그인 서버에 연결하지 못했습니다.','error');return false}}
 function setAccountFormMessage(message='',type='info'){const el=$('accountFormMessage');if(!el)return;el.textContent=message;el.className='account-form-message'+(message?' show '+type:'')}
-function applyAuthenticationGate(authenticated,message=''){
- const on=!!authenticated;
- document.body.classList.toggle('auth-locked',!on);
- const gate=$('authGate'),note=$('authGateNote');
- if(gate)gate.setAttribute('aria-hidden',on?'true':'false');
- if(note)note.textContent=on?'로그인 확인 완료':(message||'회원가입 또는 로그인 후 모든 기능을 이용할 수 있습니다.');
- if(!on){try{window.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){window.scrollTo(0,0)}}
- setTimeout(()=>{syncBottomNavSpace?.()},30);
-}
-function requireMemberAccess(message='회원가입 후 이용해 주세요.'){
- if(AUTH_BOOTSTRAP_PENDING||AUTH_RESTORE_IN_PROGRESS){applyAuthenticationGate(false,'로그인 상태를 확인하고 있습니다.');return false}
- if(persistentLoginToken()||authToken()){refreshAccountUI();return false}
- applyAuthenticationGate(false,message);setTimeout(()=>{openAccountModal('login');setAccountFormMessage('회원가입 후 이용해 주세요. 기존 회원은 로그인해 주세요.','error')},60);return false
-}
+function applyAuthenticationGate(authenticated,message=''){const on=!!authenticated;document.body.classList.toggle('auth-locked',!on);const gate=$('authGate'),note=$('authGateNote');if(gate)gate.setAttribute('aria-hidden',on?'true':'false');if(note)note.textContent=on?'로그인 확인 완료':(message||'회원가입 또는 로그인 후 모든 기능을 이용할 수 있습니다.');if(!on){try{window.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){window.scrollTo(0,0)}}setTimeout(()=>{syncBottomNavSpace?.()},30)}
+function requireMemberAccess(message='회원가입 후 이용해 주세요.'){if(AUTH_BOOTSTRAP_PENDING||AUTH_RESTORE_IN_PROGRESS){applyAuthenticationGate(false,'로그인 상태를 확인하고 있습니다.');return false}if(authToken()){refreshAccountUI();return false}applyAuthenticationGate(false,message);setTimeout(()=>{openAccountModal('login');setAccountFormMessage('회원가입 후 이용해 주세요. 기존 회원은 로그인해 주세요.','error')},60);return false}
 function toggleAccountPassword(){const input=$('accountPasswordInput'),btn=$('accountPasswordToggle');if(!input)return;const showing=input.type==='text';input.type=showing?'password':'text';if(btn){btn.textContent=showing?'👁️':'🙈';btn.setAttribute('aria-label',showing?'비밀번호 보기':'비밀번호 숨기기');btn.title=showing?'비밀번호 보기':'비밀번호 숨기기'}}
 function restoreLoginPreferences(){let savedId='',auto=false;try{savedId=localStorage.getItem(REMEMBER_LOGIN_ID_KEY)||'';auto=localStorage.getItem(AUTO_LOGIN_PREF_KEY)==='1'}catch(e){}const id=$('accountEmailInput'),remember=$('rememberLoginId'),autoBox=$('autoLoginCheck');if(remember)remember.checked=!!savedId;if(autoBox)autoBox.checked=auto;if(id&&accountMode==='login'&&savedId)id.value=savedId}
 function saveLoginPreferences(identifier){const remember=!!$('rememberLoginId')?.checked,auto=!!$('autoLoginCheck')?.checked;try{if(remember)localStorage.setItem(REMEMBER_LOGIN_ID_KEY,String(identifier||''));else localStorage.removeItem(REMEMBER_LOGIN_ID_KEY);if(auto)localStorage.setItem(AUTO_LOGIN_PREF_KEY,'1');else localStorage.removeItem(AUTO_LOGIN_PREF_KEY)}catch(e){}return {remember,auto}}
 function fitAccountModalViewport(){const h=Math.max(320,Math.round(window.visualViewport?.height||window.innerHeight||document.documentElement.clientHeight||700));document.documentElement.style.setProperty('--account-vvh',h+'px');const m=$('accountModal');if(m?.classList.contains('show'))m.scrollTop=0}
-function openAccountModal(mode='register'){switchAccountMode(mode);restoreLoginPreferences();setAccountFormMessage('');fitAccountModalViewport();const m=$('accountModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false');m.scrollTop=0;setTimeout(()=>{fitAccountModalViewport();const input=$('accountEmailInput');try{input?.focus({preventScroll:true})}catch(e){input?.focus()}m.scrollTop=0},100);if(mode==='login'){setAccountFormMessage('로그인 서버를 확인하고 있습니다.','info');checkLoginServerStatus().then(ok=>{if(ok){const diag=readAuthDiagnostic();setAccountFormMessage(diag||'이메일 또는 회원번호와 비밀번호를 입력해 주세요.',diag?'error':'info')}})}}
+function openAccountModal(mode='register'){switchAccountMode(mode);restoreLoginPreferences();setAccountFormMessage('');fitAccountModalViewport();const m=$('accountModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false');m.scrollTop=0;setTimeout(()=>{fitAccountModalViewport();const input=$('accountEmailInput');try{input?.focus({preventScroll:true})}catch(e){input?.focus()}m.scrollTop=0},100);if(mode==='login'){setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 입력해 주세요.','info')}}
 function closeAccountModal(){const m=$('accountModal');m?.classList.remove('show');m?.setAttribute('aria-hidden','true');setAccountFormMessage('')}
 if(window.visualViewport){window.visualViewport.addEventListener('resize',fitAccountModalViewport);window.visualViewport.addEventListener('scroll',fitAccountModalViewport)}window.addEventListener('orientationchange',()=>setTimeout(fitAccountModalViewport,120));
 function switchAccountMode(mode){accountMode=mode;const reg=mode==='register',id=$('accountEmailInput'),pw=$('accountPasswordInput');$('accountModalTitle').textContent=reg?'무료 계정 만들기':'기존 계정 로그인';$('accountNameWrap').style.display=reg?'block':'none';$('accountSubmitBtn').textContent=reg?'계정 만들기':'로그인';$('accountTabRegister').classList.toggle('active',reg);$('accountTabLogin').classList.toggle('active',!reg);if($('forgotPasswordBtn'))$('forgotPasswordBtn').style.display=reg?'none':'block';if($('accountConsentWrap'))$('accountConsentWrap').style.display=reg?'block':'none';if($('accountLoginOptions'))$('accountLoginOptions').style.display=reg?'none':'grid';if($('autoLoginHint'))$('autoLoginHint').style.display=reg?'none':'block';if($('accountIdentifierLabel'))$('accountIdentifierLabel').textContent=reg?'이메일':'이메일 또는 회원번호';if(id){id.type=reg?'email':'text';id.inputMode=reg?'email':'text';id.autocomplete=reg?'email':'username';id.placeholder=reg?'seller@example.com':'이메일 또는 6자리 회원번호'}if(pw){pw.type='password';pw.autocomplete=reg?'new-password':'current-password'}if($('accountPasswordToggle')){$('accountPasswordToggle').textContent='👁️';$('accountPasswordToggle').setAttribute('aria-label','비밀번호 보기')}if(!reg)restoreLoginPreferences();setAccountFormMessage('')}
-
-function moveToMainAfterLogin(){
- closeAccountModal();
- try{sessionStorage.setItem('resellPickCurrentPage','sourcing')}catch(e){}
- showPage('sourcing',{scroll:true});
- requestAnimationFrame(scrollPageTop);setTimeout(scrollPageTop,80);setTimeout(scrollPageTop,260);
-}
-async function submitAccount(){
- const email=($('accountEmailInput')?.value||'').trim(),password=$('accountPasswordInput')?.value||'',display_name=($('accountNameInput')?.value||'').trim(),terms_agreed=!!$('accountTermsAgree')?.checked,privacy_agreed=!!$('accountPrivacyAgree')?.checked,remember_id=accountMode==='login'&&!!$('rememberLoginId')?.checked,auto_login=accountMode==='login'&&!!$('autoLoginCheck')?.checked,btn=$('accountSubmitBtn');
- if(!email||!password){setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.','error');return}
- if(accountMode==='register'&&(!terms_agreed||!privacy_agreed)){setAccountFormMessage('이용약관과 개인정보 처리방침에 모두 동의해 주세요.','error');return}
- try{
-  btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');
-  const payload={email,identifier:email,password,display_name,terms_agreed,privacy_agreed,auto_login};
-  const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify(payload)});
-  if(accountMode==='login'&&d.server_version&&d.server_version!=='6.12.0')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');
-  if(d.auth_token||d.persistent_login_token||d.restore_token||d.device_token||d.login_resume_token)await saveAuthBundle(d);
-  if(accountMode==='login')saveLoginPreferences(email);
-  const loggedIn=await refreshAccountUI();
-  if(!loggedIn)throw new Error('로그인키 발급 후 재확인에 실패했습니다. 배포 서버와 데이터베이스 연결을 확인해 주세요.');
-  setAccountFormMessage(d.message||'로그인했습니다.','success');
-  if(accountMode==='register'){
-   moveToMainAfterLogin();
-   if(confirm('계정을 만들었습니다. 현재 기기의 데이터를 클라우드에 바로 저장하시겠습니까?'))await saveToCloud();
-  }else{
-   setTimeout(moveToMainAfterLogin,120);
-  }
- }catch(e){setAccountFormMessage(e.message||'로그인에 실패했습니다. 입력 내용을 확인해 주세요.','error')}
- finally{btn.disabled=false;btn.textContent=accountMode==='register'?'계정 만들기':'로그인'}
-}
-function applyAccountState(d={}){
- const on=!!(d.authenticated||d.user),u=d.user||{};
- CURRENT_ACCOUNT_USER=on?u:null;
- if(on){document.body.classList.remove('auth-restoring');const modal=$('accountModal');if(modal?.classList.contains('show'))closeAccountModal()}
- applyAuthenticationGate(on,on?'':'회원가입 후 이용해 주세요.');
- $('accountLoggedOut').style.display=on?'none':'block';$('accountLoggedIn').style.display=on?'block':'none';
- $('accountStateBadge').textContent=on?'로그인됨':'로그아웃';$('accountStateBadge').classList.toggle('on',on);
- const isAdmin=!!(on&&u.is_admin);document.querySelectorAll('.admin-console').forEach(el=>el.classList.toggle('show',isAdmin));const ac=$('adminConsole');if(ac&&!isAdmin)ac.removeAttribute('open')
- if(on){
-  loadServiceNotices();
-  $('accountDisplayName').textContent=u.display_name||'리셀 PICK 회원';$('accountEmail').textContent=(u.email||'')+(u.is_admin?' · 관리자':'');
-  if($('accountMemberNumber'))$('accountMemberNumber').textContent=u.member_number?'회원번호 '+String(u.member_number):'';
-  const cs=d.consents||{};if($('accountConsentStatus')){$('accountConsentStatus').textContent=(cs.terms_current&&cs.privacy_current)?'필수 약관 동의 완료':'필수 약관 동의 완료';$('accountConsentStatus').style.color='#16854d'}
-  sanitizeSneakerStoreField(false);if(u.is_admin){renderCustomerUsage();renderSubscriptionDays({...u,plan:'admin'});loadAdminDashboard();loadAdminNotices()}else{if(PLAN_TABLE[u.plan])localStorage.setItem(PLAN_KEY,u.plan);renderCustomerUsage();renderSubscriptionDays(u)}
- }
- return on;
-}
-async function refreshAccountUI(loginResult=null){
- if(!loginResult&&ACCOUNT_REFRESH_PROMISE)return ACCOUNT_REFRESH_PROMISE;
- const run=async()=>{
-  await hydrateAuthStorage();
-  if(loginResult?.user){await saveAuthBundle(loginResult);return applyAccountState({authenticated:true,...loginResult})}
-  const token=authToken(),persistent=persistentLoginToken();
-  AUTH_RESTORE_IN_PROGRESS=true;document.body.classList.add('auth-restoring');
-  applyAuthenticationGate(false,'로그인 상태를 확인하고 있습니다.');
-  try{
-   const d=await accountRequest('/api/account/me?ts='+Date.now(),{method:'GET'});
-   if(d?.authenticated||d?.user){await saveAuthBundle(d);return applyAccountState(d)}
-   await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false});return false;
-  }catch(e){
-   if(e?.status===401||e?.status===403){saveAuthDiagnostic(e,!!(token||persistent));await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false});return false}
-   saveAuthDiagnostic(e,!!(token||persistent));CURRENT_ACCOUNT_USER=null;applyAuthenticationGate(false,'서버 연결을 확인하고 있습니다. 인터넷 연결 후 다시 시도해 주세요.');return false;
-  }finally{AUTH_RESTORE_IN_PROGRESS=false;document.body.classList.remove('auth-restoring')}
- };
- if(loginResult)return run();
- ACCOUNT_REFRESH_PROMISE=run().finally(()=>{ACCOUNT_REFRESH_PROMISE=null});
- return ACCOUNT_REFRESH_PROMISE;
-}
+function moveToMainAfterLogin(){closeAccountModal();try{sessionStorage.setItem('resellPickCurrentPage','sourcing')}catch(e){}showPage('sourcing',{scroll:true});requestAnimationFrame(scrollPageTop);setTimeout(scrollPageTop,80);setTimeout(scrollPageTop,260)}
+async function submitAccount(){const email=($('accountEmailInput')?.value||'').trim(),password=$('accountPasswordInput')?.value||'',display_name=($('accountNameInput')?.value||'').trim(),terms_agreed=!!$('accountTermsAgree')?.checked,privacy_agreed=!!$('accountPrivacyAgree')?.checked,auto_login=accountMode==='login'&&!!$('autoLoginCheck')?.checked,btn=$('accountSubmitBtn');if(!email||!password){setAccountFormMessage('이메일 또는 회원번호와 비밀번호를 모두 입력해 주세요.','error');return}if(accountMode==='register'&&(!terms_agreed||!privacy_agreed)){setAccountFormMessage('이용약관과 개인정보 처리방침에 모두 동의해 주세요.','error');return}try{btn.disabled=true;btn.textContent=accountMode==='register'?'계정 만드는 중…':'로그인 확인 중…';setAccountFormMessage(accountMode==='register'?'계정을 안전하게 만들고 있습니다.':'계정 정보를 확인하고 있습니다.','info');const payload={email,identifier:email,password,display_name,terms_agreed,privacy_agreed,auto_login};const d=await accountRequest('/api/account/'+accountMode,{method:'POST',body:JSON.stringify(payload)});if(d.server_version&&d.server_version!=='6.12.1')throw new Error('화면과 로그인 서버의 버전이 다릅니다. Render 배포 완료 후 다시 로그인해 주세요.');await saveAuthBundle(d);if(accountMode==='login')saveLoginPreferences(email);const loggedIn=await refreshAccountUI(d);if(!loggedIn)throw new Error('로그인 결과를 화면에 반영하지 못했습니다.');setAccountFormMessage(d.message||'로그인했습니다.','success');if(accountMode==='register'){moveToMainAfterLogin();if(confirm('계정을 만들었습니다. 현재 기기의 데이터를 클라우드에 바로 저장하시겠습니까?'))await saveToCloud()}else setTimeout(moveToMainAfterLogin,80)}catch(e){setAccountFormMessage(e.message||'로그인에 실패했습니다. 입력 내용을 확인해 주세요.','error')}finally{btn.disabled=false;btn.textContent=accountMode==='register'?'계정 만들기':'로그인'}}
+function applyAccountState(d={}){const on=!!(d.authenticated||d.user),u=d.user||{};CURRENT_ACCOUNT_USER=on?u:null;if(on){document.body.classList.remove('auth-restoring');const modal=$('accountModal');if(modal?.classList.contains('show'))closeAccountModal()}applyAuthenticationGate(on,on?'':'회원가입 후 이용해 주세요.');$('accountLoggedOut').style.display=on?'none':'block';$('accountLoggedIn').style.display=on?'block':'none';$('accountStateBadge').textContent=on?'로그인됨':'로그아웃';$('accountStateBadge').classList.toggle('on',on);const isAdmin=!!(on&&u.is_admin);document.querySelectorAll('.admin-console').forEach(el=>el.classList.toggle('show',isAdmin));const ac=$('adminConsole');if(ac&&!isAdmin)ac.removeAttribute('open');if(on){loadServiceNotices();$('accountDisplayName').textContent=u.display_name||'리셀 PICK 회원';$('accountEmail').textContent=(u.email||'')+(u.is_admin?' · 관리자':'');if($('accountMemberNumber'))$('accountMemberNumber').textContent=u.member_number?'회원번호 '+String(u.member_number):'';const cs=d.consents||{};if($('accountConsentStatus')){$('accountConsentStatus').textContent='필수 약관 동의 완료';$('accountConsentStatus').style.color='#16854d'}sanitizeSneakerStoreField(false);if(u.is_admin){renderCustomerUsage();renderSubscriptionDays({...u,plan:'admin'});loadAdminDashboard();loadAdminNotices()}else{if(PLAN_TABLE[u.plan])localStorage.setItem(PLAN_KEY,u.plan);renderCustomerUsage();renderSubscriptionDays(u)}}return on}
+async function refreshAccountUI(loginResult=null){if(loginResult?.user){await saveAuthBundle(loginResult);return applyAccountState({authenticated:true,...loginResult})}if(ACCOUNT_REFRESH_PROMISE)return ACCOUNT_REFRESH_PROMISE;const run=async()=>{await hydrateAuthStorage();const token=authToken();AUTH_RESTORE_IN_PROGRESS=true;document.body.classList.add('auth-restoring');applyAuthenticationGate(false,'로그인 상태를 확인하고 있습니다.');if(!token){CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false});return false}try{const d=await accountRequest('/api/account/me?ts='+Date.now(),{method:'GET'});if(d?.authenticated||d?.user){await saveAuthBundle(d);return applyAccountState(d)}throw Object.assign(new Error('로그인 상태를 확인하지 못했습니다.'),{status:401,code:'login_required'})}catch(e){saveAuthDiagnostic(e,true);if(e?.status===401||e?.status===403)await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false});return false}finally{AUTH_RESTORE_IN_PROGRESS=false;document.body.classList.remove('auth-restoring')}};ACCOUNT_REFRESH_PROMISE=run().finally(()=>{ACCOUNT_REFRESH_PROMISE=null});return ACCOUNT_REFRESH_PROMISE}
 function renderSubscriptionDays(u={}){if(u.is_admin||u.plan==='admin'){if($('paidDaysLeft'))$('paidDaysLeft').textContent='무제한';if($('customerPlanDays'))$('customerPlanDays').textContent='무제한';if($('customerPlanExpiry'))$('customerPlanExpiry').textContent='만료 없음';return}const paid=['pro','proplus'].includes(u.plan);let days=u.days_remaining,expiry=u.plan_expires_at;if($('paidDaysLeft'))$('paidDaysLeft').textContent=paid&&days!==null&&days!==undefined?days+'일':'결제 전';if($('customerPlanDays'))$('customerPlanDays').textContent=paid&&days!==null&&days!==undefined?days+'일':'-';if($('customerPlanExpiry'))$('customerPlanExpiry').textContent=expiry?new Date(expiry).toLocaleDateString('ko-KR'):'결제 전';if(u.subscription_expired){if($('paidDaysLeft'))$('paidDaysLeft').textContent='기간 만료';if($('customerPlanDays'))$('customerPlanDays').textContent='기간 만료'}}
 function openPasswordResetModal(){closeAccountModal();const email=($('accountEmailInput')?.value||'').trim();if($('resetEmailInput'))$('resetEmailInput').value=email;const m=$('passwordResetModal');m?.classList.add('show');m?.setAttribute('aria-hidden','false')}
 function closePasswordResetModal(){const m=$('passwordResetModal');m?.classList.remove('show');m?.setAttribute('aria-hidden','true')}
@@ -1486,17 +1362,12 @@ async function restoreFromCloud(){try{const d=await accountRequest('/api/cloud/s
 async function logoutAccount(){if(!confirm('로그아웃하시겠습니까? 기기에 저장된 데이터는 그대로 유지됩니다.'))return;try{await accountRequest('/api/account/logout',{method:'POST',body:'{}'})}catch(e){}await clearAuthToken();try{localStorage.removeItem(AUTO_LOGIN_PREF_KEY)}catch(e){}if($('autoLoginCheck'))$('autoLoginCheck').checked=false;CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false})}
 function rearCameraIsOpen(){return rearCameraHistoryActive||!!$('rearCameraModal')?.classList.contains('show')}
 let ACCOUNT_STARTUP_RESTORED=false;
-async function restoreAccountOnStartup(){
- restoreLoginPreferences();document.body.classList.add('auth-restoring');
- try{const on=await refreshAccountUI();if(on&&!ACCOUNT_STARTUP_RESTORED){ACCOUNT_STARTUP_RESTORED=true;moveToMainAfterLogin();setTimeout(()=>{scheduleAutoSourcingMemo('general');scheduleAutoSourcingMemo('resell')},180)}}
- finally{AUTH_BOOTSTRAP_PENDING=false;document.body.classList.remove('auth-restoring')}
-}
+async function restoreAccountOnStartup(){restoreLoginPreferences();migrateAuthToken();document.body.classList.add('auth-restoring');try{const on=await refreshAccountUI();if(on&&!ACCOUNT_STARTUP_RESTORED){ACCOUNT_STARTUP_RESTORED=true;moveToMainAfterLogin();setTimeout(()=>{scheduleAutoSourcingMemo('general');scheduleAutoSourcingMemo('resell')},180)}}finally{AUTH_BOOTSTRAP_PENDING=false;document.body.classList.remove('auth-restoring')}}
 window.addEventListener('DOMContentLoaded',restoreAccountOnStartup,{once:true});
-window.addEventListener('pageshow',event=>{if(event.persisted&&!CURRENT_ACCOUNT_USER&&(persistentLoginToken()||authToken()))setTimeout(()=>refreshAccountUI(),100)});
-async function authHeartbeat(){if(document.hidden||rearCameraIsOpen()||!CURRENT_ACCOUNT_USER||!(persistentLoginToken()||authToken()))return;try{await accountRequest('/api/account/heartbeat',{method:'POST',body:'{}'})}catch(e){if(e?.status===401||e?.status===403){await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false})}}}
+async function authHeartbeat(){if(document.hidden||rearCameraIsOpen()||!CURRENT_ACCOUNT_USER||!authToken())return;try{await accountRequest('/api/account/heartbeat',{method:'POST',body:'{}'});touchAuthActivity()}catch(e){if(e?.status===401||e?.status===403){await clearAuthToken();CURRENT_ACCOUNT_USER=null;applyAccountState({authenticated:false})}}}
 setInterval(authHeartbeat,240000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!rearCameraIsOpen()){if(CURRENT_ACCOUNT_USER)authHeartbeat();else if(persistentLoginToken()||authToken())refreshAccountUI()}});
-window.addEventListener('pagehide',()=>{if(CURRENT_ACCOUNT_USER&&(persistentLoginToken()||authToken())){try{fetch('/api/account/heartbeat',{method:'POST',credentials:'include',keepalive:true,headers:authHeaders({'Content-Type':'application/json'}),body:'{}'})}catch(e){}}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!rearCameraIsOpen()&&CURRENT_ACCOUNT_USER)authHeartbeat()});
+window.addEventListener('pagehide',()=>{if(CURRENT_ACCOUNT_USER&&authToken()){try{fetch('/api/account/heartbeat',{method:'POST',credentials:'include',keepalive:true,headers:authHeaders({'Content-Type':'application/json'}),body:'{}'})}catch(e){}}});
 
 async function changePasswordAccount(){const old_password=prompt('현재 비밀번호를 입력하세요.');if(old_password===null)return;const new_password=prompt('새 비밀번호를 8자 이상 입력하세요.');if(new_password===null)return;try{await accountRequest('/api/account/change-password',{method:'POST',body:JSON.stringify({old_password,new_password})});alert('비밀번호가 변경되었습니다.')}catch(e){alert(e.message)}}
 async function deleteAccountPermanently(){if(!confirm('회원정보와 클라우드 데이터를 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.'))return;const password=prompt('확인을 위해 비밀번호를 입력하세요.');if(password===null)return;try{await accountRequest('/api/account',{method:'DELETE',body:JSON.stringify({password})});alert('회원 탈퇴가 완료되었습니다.');location.reload()}catch(e){alert(e.message)}}
