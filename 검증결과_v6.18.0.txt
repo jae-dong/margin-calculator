@@ -1,0 +1,22 @@
+리셀 PICK v6.18.0 검증 결과
+
+1. app.py Python 문법 검사: 통과
+2. index.html 전체 JavaScript 문법 검사(Node --check): 통과
+3. account-delete.html JavaScript 문법 검사: 통과
+4. HTML ID 중복 검사: 중복 없음
+5. 공개 경로 정적 검사: /privacy, /terms, /account-delete, /api/public/account-delete, /api/public/legal-status 확인
+6. 계정 삭제 SQL 흐름 모의검사: 회원·클라우드·사용량·동의·로그인·베타 연결 데이터 삭제 및 운영 로그 계정 분리 통과
+7. v6.17.0 대비 로그인 유지 핵심 Python/JavaScript 함수 비교: 버전 문자열 외 변경 없음
+8. 화면·서버·서비스워커·manifest·version.json 버전: 6.18.0 통일
+9. 공개 문서 HTML 구조 검사: 통과
+10. ZIP 무결성 검사: 통과
+
+배포 후 최종 확인
+- Render /version.json이 6.18.0인지 확인
+- /privacy, /terms, /account-delete 공개 주소 확인
+- 관리자 화면의 공개 주소 점검 실행
+- 실제 테스트 회원으로 데이터 내려받기 후 계정 삭제 1회 확인
+
+주의
+- 정식 유료 출시 전에 개인정보처리방침과 이용약관은 사업자 정보, 처리 위탁업체, 보유기간, 결제·환불 정책을 포함해 최종 법률 검토가 필요합니다.
+- ZIP 안의 파일을 일부만 교체하지 말고 app.py가 있는 저장소 최상단에 전부 덮어쓰세요.
