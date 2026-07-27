@@ -1,0 +1,11 @@
+리셀 PICK v6.12.5 검증 결과
+
+1. Python 문법 검사 통과
+2. JavaScript 문법 검사 통과
+3. ZIP 무결성 검사 통과
+4. 로그아웃 초기 화면: 데이터 관리·공통 계산 설정 hidden 확인
+5. applyAccountState(false): settings-login-only 전체 숨김 처리 확인
+6. applyAccountState(true): settings-login-only 전체 표시 처리 확인
+7. 서비스 안내 카드는 로그인 여부와 관계없이 표시 유지
+8. v6.12.2 DB 단일키 로그인 관련 함수 및 키 이름 변경 없음
+9. v6.12.4 클라우드 자동 저장 관련 함수 유지
